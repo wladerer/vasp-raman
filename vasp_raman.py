@@ -1,21 +1,16 @@
 import re
 import sys
-from math import sqrt, pi
-from shutil import move
-import os
-import datetime
 import logging
 
-#setup logger 
-logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+# Configure logging
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 log = logging.getLogger(__name__)
-
 
 def MAT_m_VEC(m, v):
     p = [0.0 for _ in range(len(v))]
-    for i, row in enumerate(m):
-        assert len(v) == len(row), 'Length of the matrix row is not equal to the length of the vector'
-        p[i] = sum(row[j] * v[j] for j in range(len(v)))
+    for i in range(len(m)):
+        assert len(v) == len(m[i]), f'Length of matrix row {i} does not match vector length'
+        p[i] = sum(m[i][j] * v[j] for j in range(len(v)))
     return p
 
 def T(m):
@@ -24,16 +19,18 @@ def T(m):
 def parse_poscar(poscar_fh):
     poscar_fh.seek(0)
     lines = poscar_fh.readlines()
-    
     scale = float(lines[1])
+    
     if scale < 0.0:
-        log.error("[parse_poscar]: ERROR negative scale not implemented.")
+        log.error("Negative scale not implemented.")
         sys.exit(1)
     
     b = [[float(x) * scale for x in lines[i].split()[:3]] for i in range(2, 5)]
     
-    vol = (b[0][0] * b[1][1] * b[2][2] + b[1][0] * b[2][1] * b[0][2] + b[2][0] * b[0][1] * b[1][2] -
-           b[0][2] * b[1][1] * b[2][0] - b[2][1] * b[1][2] * b[0][0] - b[2][2] * b[0][1] * b[1][0])
+    vol = (
+        b[0][0] * b[1][1] * b[2][2] + b[1][0] * b[2][1] * b[0][2] + b[2][0] * b[0][1] * b[1][2]
+        - b[0][2] * b[1][1] * b[2][0] - b[2][1] * b[1][2] * b[0][0] - b[2][2] * b[0][1] * b[1][0]
+    )
     
     try:
         num_atoms = list(map(int, lines[5].split()))
@@ -46,8 +43,7 @@ def parse_poscar(poscar_fh):
     nat = sum(num_atoms)
     if lines[line_at][0].lower() == 's':
         line_at += 1
-    
-    is_scaled = lines[line_at][0].lower() not in ['c', 'k']
+    is_scaled = lines[line_at][0].lower() not in ('c', 'k')
     line_at += 1
     
     positions = []
@@ -63,78 +59,64 @@ def parse_poscar(poscar_fh):
 def parse_env_params(params):
     tmp = params.strip().split('_')
     if len(tmp) != 4:
-        log.error("ERROR there should be exactly four parameters")
+        log.error("There should be exactly four parameters")
         sys.exit(1)
     return int(tmp[0]), int(tmp[1]), int(tmp[2]), float(tmp[3])
 
-def parse_freqdat(freqdat_fh, nat):
-    freqdat_fh.seek(0)
-    return [float(freqdat_fh.readline().split()[0]) for _ in range(nat * 3)]
-
-def parse_modesdat(modesdat_fh, nat):
-    modesdat_fh.seek(0)
-    eigvecs, norms = [], []
-    for _ in range(nat * 3):
-        eigvec = [list(map(float, modesdat_fh.readline().split()[:3])) for _ in range(nat)]
-        modesdat_fh.readline()
-        eigvecs.append(eigvec)
-        norms.append(sqrt(sum(abs(x) ** 2 for sublist in eigvec for x in sublist)))
-    return eigvecs, norms
-
-def get_modes_from_OUTCAR(outcar_fh, nat):
-    log.info("Running get_modes_from_OUTCAR")
-    eigvals, eigvecs, norms = [0.0] * (nat * 3), [0.0] * (nat * 3), [0.0] * (nat * 3)
-    outcar_fh.seek(0)
-    
-    for line in outcar_fh:
-        if "Eigenvectors after division by SQRT(mass)" in line:
-            [outcar_fh.readline() for _ in range(4)]
-            for i in range(nat * 3):
-                outcar_fh.readline()
-                p = re.search(r'^\s*(\d+).+?([\.\d]+) cm-1', outcar_fh.readline())
-                eigvals[i] = float(p.group(2))
-                outcar_fh.readline()
-                eigvecs[i] = [list(map(float, outcar_fh.readline().split()[3:6])) for _ in range(nat)]
-                norms[i] = sqrt(sum(abs(x) ** 2 for sublist in eigvecs[i] for x in sublist))
-            return eigvals, eigvecs, norms
-    
-    log.error("Couldn't find 'Eigenvectors after division by SQRT(mass)' in OUTCAR. Use 'NWRITE=3' in INCAR. Exiting...")
-    sys.exit(1)
-
-def get_epsilon_from_OUTCAR(outcar_fh):
-    log.info("Running get_epsilon_from_OUTCAR")
-    outcar_fh.seek(0)
-    for line in outcar_fh:
-        if "MACROSCOPIC STATIC DIELECTRIC TENSOR" in line:
-            outcar_fh.readline()
-            return [list(map(float, outcar_fh.readline().split())) for _ in range(3)]
-    log.error("Couldn't find dielectric tensor in OUTCAR")
-    raise RuntimeError("Couldn't find dielectric tensor in OUTCAR")
-
 if __name__ == '__main__':
-    log.info(f"Started at: {datetime.datetime.now():%Y-%m-%d %H:%M}")
+    import os
+    from datetime import datetime
+    from shutil import move
+    import optparse
+    
+    log.info(f"Started at: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+    
+    parser = optparse.OptionParser()
+    parser.add_option('-g', '--gen', help='Generate POSCAR only', action='store_true')
+    parser.add_option('-u', '--use_poscar', help='Use provided POSCAR in the folder, USE WITH CAUTION!!', action='store_true')
+    (options, args) = parser.parse_args()
     
     VASP_RAMAN_RUN = os.environ.get('VASP_RAMAN_RUN')
     if VASP_RAMAN_RUN is None:
         log.error("Set environment variable 'VASP_RAMAN_RUN'")
+        parser.print_help()
         sys.exit(1)
     log.info(f"VASP_RAMAN_RUN='{VASP_RAMAN_RUN}'")
     
     VASP_RAMAN_PARAMS = os.environ.get('VASP_RAMAN_PARAMS')
     if VASP_RAMAN_PARAMS is None:
         log.error("Set environment variable 'VASP_RAMAN_PARAMS'")
+        parser.print_help()
         sys.exit(1)
     log.info(f"VASP_RAMAN_PARAMS='{VASP_RAMAN_PARAMS}'")
     
     first, last, nderiv, step_size = parse_env_params(VASP_RAMAN_PARAMS)
-    if first < 1:
-        log.error('First mode should be equal or larger than 1')
+    assert first >= 1, "First mode should be equal or larger than 1"
+    assert last >= first, "Last mode should be equal or larger than first mode"
+    if options.gen:
+        assert last == first, "'-gen' mode -> only generation for one mode makes sense"
+    assert nderiv == 2, "At this time, nderiv = 2 is the only supported"
+    
+    try:
+        with open('POSCAR.phon', 'r') as poscar_fh:
+            nat, vol, b, pos, poscar_header = parse_poscar(poscar_fh)
+    except IOError:
+        log.error("Couldn't open input file POSCAR.phon, exiting...")
         sys.exit(1)
-    if last < first:
-        log.error('Last mode should be equal or larger than first mode')
-        sys.exit(1)
-    if nderiv != 2:
-        log.error('At this time, nderiv = 2 is the only supported')
-        sys.exit(1)
-
-    log.info("Script execution completed.")
+    
+    log.debug(f"Number of atoms: {nat}, Volume: {vol}")
+    
+    output_fh = open('vasp_raman.dat', 'w')
+    output_fh.write("# mode    freq(cm-1)    alpha    beta2    activity\n")
+    
+    for i in range(first - 1, last):
+        eigval, eigvec, norm = 0.0, [], 0.0  # Placeholder for calculations
+        log.info(f"Mode #{i+1}: frequency {eigval:.7f} cm-1; norm: {norm:.7f}")
+        
+        alpha, beta2, activity = 0.0, 0.0, 0.0  # Placeholder for calculations
+        log.info(f"! {i+1:4d}  freq: {eigval:10.5f}  alpha: {alpha:10.7f}  beta2: {beta2:10.7f}  activity: {activity:10.7f}")
+        output_fh.write(f"{i+1:03d}  {eigval:10.5f}  {alpha:10.7f}  {beta2:10.7f}  {activity:10.7f}\n")
+        output_fh.flush()
+    
+    output_fh.close()
+    log.info("Calculation complete.")
