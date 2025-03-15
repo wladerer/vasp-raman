@@ -16,6 +16,41 @@ Please set `VASP_RAMAN_PARAMS` and `VASP_RAMAN_RUN` in your submission script.
 
   - `VASP_RAMAN_RUN` the command to execute VASP (can contain MPI call):  
 
+
+## Calculation Prep
+
+You must do some work beforehand to have this script do the rest. In the directory in which you would like to run `vasp_raman.py` please include the following files:
+
+- INCAR        - should contain `NWRITE =3`, `LEPSILON=.TRUE`, and `IBRION = {5,6,7,8}` 
+- OUTCAR.phon  - should contain 'Eigenvectors after division by SQRT(mass)' 
+- POSCAR.phon  
+- POTCAR       
+- KPOINTS      
+
+Where the `.phon` extension indicates that this file has come from either a DFPT or finite-differences calculation.
+
+Here is an example INCAR that you can use
+```
+ISTART = 0
+NWRITE = 3
+LPLANE = .FALSE.
+KPAR = 8
+
+ENCUT = 400.0
+PREC = Accurate
+EDIFF = 1.0E-8
+ISMEAR = 0
+SIGMA = 0.05
+LEPSILON=.TRUE.
+
+LREAL = Automatic
+ADDGRID = .TRUE.
+LCHARG = .FALSE.
+```
+
+Note that this is not the only configuration. You can have multistep options as well (see the examples in the original repository). 
+
+
 An example of SLURM script:
 
 ```bash
