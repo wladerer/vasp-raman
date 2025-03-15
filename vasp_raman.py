@@ -235,7 +235,11 @@ if __name__ == '__main__':
             logging.info("Couldn't open OUTCAR.phon, exiting...")
             sys.exit(1)
    
-        eigvals, eigvecs, norms = get_modes_from_OUTCAR(outcar_fh, nat)
+        eigvals, eigvecs, norms = get_modes_from_OUTCAR(outcar_fh)
+        logging.debug(f"Eigenvalues: {eigvals}")
+        logging.debug(f"Eigenvectors: {eigvecs}")
+        logging.debug(f"Norms: {norms}")
+
         outcar_fh.close()
    
     else:
