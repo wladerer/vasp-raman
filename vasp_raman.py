@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 
 import os
-import re
 import sys
 import logging
 from math import sqrt, pi
 from shutil import move
 import argparse
+
+import numpy as np
+from pymatgen.io.vasp import Vasprun, Poscar
 
 # Configure logging
 logging.basicConfig(
@@ -15,63 +17,22 @@ logging.basicConfig(
 )
 
 def MAT_m_VEC(m, v):
-    p = [0.0 for i in range(len(v))]
-    for i in range(len(m)):
-        assert len(v) == len(m[i]), 'Length of the matrix row is not equal to the length of the vector'
-        p[i] = sum([m[i][j] * v[j] for j in range(len(v))])
-    return p
+    m = np.array(m)
+    v = np.array(v)
+    return np.dot(m, v).tolist()
 
 def T(m):
     return [[ m[i][j] for i in range(len( m[j] )) ] for j in range(len( m )) ]
 
 
 def parse_poscar(poscar_fh):
-    # modified subroutine from phonopy 1.8.3 (New BSD license)
-    #
-    poscar_fh.seek(0) # just in case
-    lines = poscar_fh.readlines()
-    #
-    scale = float(lines[1])
-    if scale < 0.0:
-        logging.error("[parse_poscar]: ERROR negative scale not implemented.")
-        sys.exit(1)
-    #
-    b = []
-    for i in range(2, 5):
-        b.append([float(x)*scale for x in lines[i].split()[:3]])
-    #
-    vol = b[0][0]*b[1][1]*b[2][2] + b[1][0]*b[2][1]*b[0][2] + b[2][0]*b[0][1]*b[1][2] - \
-          b[0][2]*b[1][1]*b[2][0] - b[2][1]*b[1][2]*b[0][0] - b[2][2]*b[0][1]*b[1][0]
-    #
-    try:
-        num_atoms = [int(x) for x in lines[5].split()]
-        line_at = 6
-    except ValueError:
-        symbols = [x for x in lines[5].split()]
-        num_atoms = [int(x) for x in lines[6].split()]
-        line_at = 7
-    nat = sum(num_atoms)
-    #
-    if lines[line_at][0].lower() == 's':
-        line_at += 1
-    #
-    if (lines[line_at][0].lower() == 'c' or lines[line_at][0].lower() == 'k'):
-        is_scaled = False
-    else:
-        is_scaled = True
-    #
-    line_at += 1
-    #
-    positions = []
-    for i in range(line_at, line_at + nat):
-        pos = [float(x) for x in lines[i].split()[:3]]
-        #
-        if is_scaled:
-            pos = MAT_m_VEC(T(b), pos)
-        #
-        positions.append(pos)
-    #
-    poscar_header = ''.join(lines[1:line_at-1]) # will add title and 'Cartesian' later
+    poscar = Poscar.from_file(poscar_fh.name)
+    structure = poscar.structure
+    nat = len(structure)
+    vol = structure.volume
+    b = structure.lattice.matrix.tolist()
+    positions = structure.cart_coords.tolist()
+    poscar_header = poscar.comment
     return nat, vol, b, positions, poscar_header
 
 
@@ -109,61 +70,17 @@ def parse_modesdat(modesdat_fh, nat):
 
     return eigvecs, norms
 
-def get_modes_from_OUTCAR(outcar_fh, nat):
-    eigvals = [ 0.0 for i in range(nat*3) ]
-    eigvecs = [ 0.0 for i in range(nat*3) ]
-    norms   = [ 0.0 for i in range(nat*3) ]
-    
-    outcar_fh.seek(0) # just in case
-    while True:
-        line = outcar_fh.readline()
-        if not line:
-            break
-        #
-        if "Eigenvectors after division by SQRT(mass)" in line:
-            outcar_fh.readline() # empty line
-            outcar_fh.readline() # Eigenvectors and eigenvalues of the dynamical matrix
-            outcar_fh.readline() # ----------------------------------------------------
-            outcar_fh.readline() # empty line
-            #
-            for i in range(nat*3): # all frequencies should be supplied, regardless of those requested to calculate
-                outcar_fh.readline() # empty line
-                p = re.search(r'^\s*(\d+).+?([\.\d]+) cm-1', outcar_fh.readline())
-                eigvals[i] = float(p.group(2))
-                #
-                outcar_fh.readline() # X         Y         Z           dx          dy          dz
-                eigvec = []
-                #
-                for j in range(nat):
-                    tmp = outcar_fh.readline().split()
-                    #
-                    eigvec.append([ float(tmp[x]) for x in range(3,6) ])
-                    #
-                eigvecs[i] = eigvec
-                norms[i] = sqrt( sum( [abs(x)**2 for sublist in eigvec for x in sublist] ) )
-            #
-            return eigvals, eigvecs, norms
-        #
-    logging.error("get_modes_from_OUTCAR]: Couldn't find 'Eigenvectors after division by SQRT(mass)' in OUTCAR. Use 'NWRITE=3' in INCAR. Exiting...")
-    sys.exit(1)
+def get_modes_from_vasprun(vasprun_fh, nat):
+    vasprun = Vasprun(vasprun_fh)
+    eigvals = vasprun.normalmode_eigenvals
+    eigvecs = vasprun.normalmode_eigenvecs
+    norms = [sqrt(sum(abs(x)**2 for sublist in eigvec for x in sublist)) for eigvec in eigvecs]
+    return eigvals.tolist(), eigvecs.tolist(), norms
 
-def get_epsilon_from_OUTCAR(outcar_fh):
-    epsilon = []
-    #
-    outcar_fh.seek(0) # just in case
-    while True:
-        line = outcar_fh.readline()
-        if not line:
-            break
-        #
-        if "MACROSCOPIC STATIC DIELECTRIC TENSOR" in line:
-            outcar_fh.readline()
-            epsilon.append([float(x) for x in outcar_fh.readline().split()])
-            epsilon.append([float(x) for x in outcar_fh.readline().split()])
-            epsilon.append([float(x) for x in outcar_fh.readline().split()])
-            return epsilon
-    #
-    raise RuntimeError("[get_epsilon_from_OUTCAR]: ERROR Couldn't find dielectric tensor in OUTCAR")
+def get_epsilon_from_vasprun(vasprun_fh):
+    vasprun = Vasprun(vasprun_fh)
+    epsilon = vasprun.epsilon_static
+    return epsilon.tolist()
 
 if __name__ == '__main__':
 
@@ -221,18 +138,17 @@ if __name__ == '__main__':
         eigvecs, norms = parse_modesdat(modes_fh, nat)
         modes_fh.close()
     #
-    elif os.path.isfile('OUTCAR.phon'):
+    elif os.path.isfile('vasprun.xml'):
         try:
-            outcar_fh = open('OUTCAR.phon', 'r')
+            vasprun_fh = 'vasprun.xml'
         except IOError:
-            logging.info("Couldn't open OUTCAR.phon, exiting...")
+            logging.info("Couldn't open vasprun.xml, exiting...")
             sys.exit(1)
         #
-        eigvals, eigvecs, norms = get_modes_from_OUTCAR(outcar_fh, nat)
-        outcar_fh.close()
+        eigvals, eigvecs, norms = get_modes_from_vasprun(vasprun_fh, nat)
     #
     else:
-        logging.error("Neither OUTCAR.phon nor freq.dat/modes_sqrt_amu.dat were found, nothing to do, exiting...")
+        logging.error("Neither vasprun.xml nor freq.dat/modes_sqrt_amu.dat were found, nothing to do, exiting...")
         sys.exit(1)
     
     output_fh = open('vasp_raman.dat', 'w')
@@ -246,31 +162,31 @@ if __name__ == '__main__':
         #
         ra = [[0.0 for x in range(3)] for y in range(3)]
         for j in range(len(disps)):
-            disp_filename = 'OUTCAR.%04d.%+d.out' % (i+1, disps[j])
+            disp_filename = 'vasprun.%04d.%+d.xml' % (i+1, disps[j])
             #
             try:
-                outcar_fh = open(disp_filename, 'r')
+                vasprun_fh = open(disp_filename, 'r')
                 logging.info(f"File {disp_filename} exists, parsing...")
             except IOError:
                 if args['use_poscar']:
                     logging.info(f"File {disp_filename} not found, preparing displaced POSCAR")
-                    poscar_fh = open('POSCAR', 'w')
-                    poscar_fh.write("%s %4.1e \n" % (disp_filename, step_size))
-                    poscar_fh.write(poscar_header)
-                    poscar_fh.write("Cartesian\n")
+                    poscar = Poscar.from_file('POSCAR')
+                    structure = poscar.structure
                     #
                     for k in range(nat):
-                        pos_disp = [ pos[k][l] + eigvec[k][l]*step_size*disps[j]/norm for l in range(3)]
-                        poscar_fh.write( '%15.10f %15.10f %15.10f\n' % (pos_disp[0], pos_disp[1], pos_disp[2]) )
-                        #print '%10.6f %10.6f %10.6f %10.6f %10.6f %10.6f' % (pos[k][0], pos[k][1], pos[k][2], dis[k][0], dis[k][1], dis[k][2])
-                    poscar_fh.close()
+                        displacement = eigvec[k] * step_size * disps[j] / norm
+                        structure.translate_sites(k, displacement, frac_coords=False)
+                    #
+                    poscar.comment = f"{disp_filename} {step_size}"
+                    poscar.structure = structure
+                    poscar.write_file('POSCAR')
                 else:
                     logging.info("Using provided POSCAR")
                 #
                 if args['gen']: # only generate POSCARs
                     poscar_fn = 'POSCAR.%+d.out' % disps[j]
                     move('POSCAR', poscar_fn)
-                    logging.info("'-gen' mode -> {poscar_fn} with displaced atoms have been generated")
+                    logging.info(f"'-gen' mode -> {poscar_fn} with displaced atoms have been generated")
                     #
                     if j+1 == len(disps): # last iteration for the current displacements list
                         logging.info("'-gen' mode -> POSCAR files with displaced atoms have been generated, exiting now")
@@ -279,20 +195,20 @@ if __name__ == '__main__':
                     print("Running VASP")
                     os.system(VASP_RAMAN_RUN)
                     try:
-                        move('OUTCAR', disp_filename)
+                        move('vasprun.xml', disp_filename)
                     except IOError:
-                        logging.error("ERROR Couldn't find OUTCAR file, exiting...")
+                        logging.error("ERROR Couldn't find vasprun.xml file, exiting...")
                         sys.exit(1)
                     
-                    outcar_fh = open(disp_filename, 'r')
+                    vasprun_fh = open(disp_filename, 'r')
             #
             try:
-                eps = get_epsilon_from_OUTCAR(outcar_fh)
-                outcar_fh.close()
+                eps = get_epsilon_from_vasprun(vasprun_fh)
+                vasprun_fh.close()
             except Exception as err:
                 logging.error(f"{err}")
-                logging.error(f"[__main__]: Moving {disp_filename} back to 'OUTCAR' and exiting...")
-                move(disp_filename, 'OUTCAR')
+                logging.error(f"Moving {disp_filename} back to 'vasprun.xml' and exiting...")
+                move(disp_filename, 'vasprun.xml')
                 sys.exit(1)
             #
             for m in range(3):
