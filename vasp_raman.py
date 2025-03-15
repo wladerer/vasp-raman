@@ -9,6 +9,16 @@ from shutil import move
 import argparse
 
 from pymatgen.io.vasp import Vasprun
+import numpy as np
+
+
+def format_array(arr):
+    """Formats a NumPy array or a nested list for better logging."""
+    if isinstance(arr, np.ndarray):
+        return np.array2string(arr, precision=4, separator=", ", suppress_small=True)
+    elif isinstance(arr, list):  # Convert lists to NumPy for consistent formatting
+        return np.array2string(np.array(arr), precision=4, separator=", ", suppress_small=True)
+    return str(arr)
 
 def funclog(func):
     def wrapper(*args, **kwargs):
@@ -19,6 +29,8 @@ def funclog(func):
 
 logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s',
+    filename="raman.log",  # Redirect logs to a file
+    filemode="w",  # Overwrite log file each run (use "a" for append mode)
     level=logging.INFO,
     datefmt='%Y-%m-%d %H:%M:%S'
 )
@@ -81,6 +93,12 @@ def parse_poscar(poscar_fh):
             pos = MAT_m_VEC(T(b), pos)
         
         positions.append(pos)
+
+    logging.debug(f"Volume: {vol:.7f}")
+    logging.debug(f"Lattice vectors: {format_array(b)}")
+    logging.debug(f"Number of atoms: {nat}")
+    logging.debug(f"Positions: {format_array(positions)}")
+
     
     poscar_header = ''.join(lines[1:line_at-1]) # will add title and 'Cartesian' later
     return nat, vol, b, positions, poscar_header
@@ -92,6 +110,7 @@ def parse_env_params(params):
         logging.error("There should be exactly four parameters")
         sys.exit(1)
     first, last, nderiv, step_size = int(tmp[0]), int(tmp[1]), int(tmp[2]), float(tmp[3])
+    logging.debug(f"First mode: {first}, last mode: {last}, nderiv: {nderiv}, step size: {step_size}")
     return first, last, nderiv, step_size
 
 @funclog
@@ -101,6 +120,8 @@ def parse_freqdat(freqdat_fh, nat):
     for i in range(nat*3): # all frequencies should be supplied, regardless of requested to calculate
         tmp = freqdat_fh.readline().split()
         eigvals[i] = float(tmp[0])
+    
+    logging.debug(f"Eigenvalues: {format_array(eigvals)}")
     return eigvals
 
 @funclog
@@ -166,7 +187,7 @@ def get_epsilon_from_OUTCAR(outcar_fh):
     try:
         vasprun = Vasprun('vasprun.xml', parse_dos=False, parse_projected_eigen=False) 
         epsilon = vasprun.epsilon_static
-        logging.debug(f"Dielectric tensor: {epsilon}")
+        logging.debug(f"Dielectric tensor: {format_array(epsilon)}")
         return epsilon
     except Exception as e:
         logging.error(f"Error parsing dielectric tensor from vasprun.xml: {e}")
