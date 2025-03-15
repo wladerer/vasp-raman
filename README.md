@@ -33,7 +33,7 @@ Here is an example INCAR that you can use
 ```
 ISTART = 0
 NWRITE = 3
-LPLANE = .FALSE.
+LPLANE = False
 KPAR = 8
 
 ENCUT = 400.0
@@ -41,14 +41,14 @@ PREC = Accurate
 EDIFF = 1.0E-8
 ISMEAR = 0
 SIGMA = 0.05
-LEPSILON=.TRUE.
+LEPSILON = False
 
-LREAL = Automatic
-ADDGRID = .TRUE.
-LCHARG = .FALSE.
+LREAL = False
+ADDGRID = False
+LCHARG = False
 ```
 
-Note that this is not the only configuration. You can have multistep options as well (see the examples in the original repository). 
+Note that this is not the only configuration. You can have multistep options as well (see the examples in the original repository). I am currently working on making this compatible with slurm job arrays so everything can be done in parallel.  
 
 
 An example of SLURM script:
