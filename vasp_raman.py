@@ -4,6 +4,12 @@ from math import sqrt, pi
 from shutil import move
 import os
 import datetime
+import logging
+
+#setup logger 
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+log = logging.getLogger(__name__)
+
 
 def MAT_m_VEC(m, v):
     p = [0.0 for _ in range(len(v))]
@@ -21,7 +27,7 @@ def parse_poscar(poscar_fh):
     
     scale = float(lines[1])
     if scale < 0.0:
-        print("[parse_poscar]: ERROR negative scale not implemented.")
+        log.error("[parse_poscar]: ERROR negative scale not implemented.")
         sys.exit(1)
     
     b = [[float(x) * scale for x in lines[i].split()[:3]] for i in range(2, 5)]
@@ -57,7 +63,7 @@ def parse_poscar(poscar_fh):
 def parse_env_params(params):
     tmp = params.strip().split('_')
     if len(tmp) != 4:
-        print("[parse_env_params]: ERROR there should be exactly four parameters")
+        log.error("ERROR there should be exactly four parameters")
         sys.exit(1)
     return int(tmp[0]), int(tmp[1]), int(tmp[2]), float(tmp[3])
 
@@ -76,6 +82,7 @@ def parse_modesdat(modesdat_fh, nat):
     return eigvecs, norms
 
 def get_modes_from_OUTCAR(outcar_fh, nat):
+    log.info("Running get_modes_from_OUTCAR")
     eigvals, eigvecs, norms = [0.0] * (nat * 3), [0.0] * (nat * 3), [0.0] * (nat * 3)
     outcar_fh.seek(0)
     
@@ -91,35 +98,43 @@ def get_modes_from_OUTCAR(outcar_fh, nat):
                 norms[i] = sqrt(sum(abs(x) ** 2 for sublist in eigvecs[i] for x in sublist))
             return eigvals, eigvecs, norms
     
-    print("[get_modes_from_OUTCAR]: ERROR Couldn't find 'Eigenvectors after division by SQRT(mass)' in OUTCAR. Use 'NWRITE=3' in INCAR. Exiting...")
+    log.error("Couldn't find 'Eigenvectors after division by SQRT(mass)' in OUTCAR. Use 'NWRITE=3' in INCAR. Exiting...")
     sys.exit(1)
 
 def get_epsilon_from_OUTCAR(outcar_fh):
+    log.info("Running get_epsilon_from_OUTCAR")
     outcar_fh.seek(0)
     for line in outcar_fh:
         if "MACROSCOPIC STATIC DIELECTRIC TENSOR" in line:
             outcar_fh.readline()
             return [list(map(float, outcar_fh.readline().split())) for _ in range(3)]
-    raise RuntimeError("[get_epsilon_from_OUTCAR]: ERROR Couldn't find dielectric tensor in OUTCAR")
+    log.error("Couldn't find dielectric tensor in OUTCAR")
+    raise RuntimeError("Couldn't find dielectric tensor in OUTCAR")
 
 if __name__ == '__main__':
-    print(f"    Started at: {datetime.datetime.now():%Y-%m-%d %H:%M}\n")
+    log.info(f"Started at: {datetime.datetime.now():%Y-%m-%d %H:%M}")
     
     VASP_RAMAN_RUN = os.environ.get('VASP_RAMAN_RUN')
     if VASP_RAMAN_RUN is None:
-        print("[__main__]: ERROR Set environment variable 'VASP_RAMAN_RUN'\n")
+        log.error("Set environment variable 'VASP_RAMAN_RUN'")
         sys.exit(1)
-    print(f"[__main__]: VASP_RAMAN_RUN='{VASP_RAMAN_RUN}'")
+    log.info(f"VASP_RAMAN_RUN='{VASP_RAMAN_RUN}'")
     
     VASP_RAMAN_PARAMS = os.environ.get('VASP_RAMAN_PARAMS')
     if VASP_RAMAN_PARAMS is None:
-        print("[__main__]: ERROR Set environment variable 'VASP_RAMAN_PARAMS'\n")
+        log.error("Set environment variable 'VASP_RAMAN_PARAMS'")
         sys.exit(1)
-    print(f"[__main__]: VASP_RAMAN_PARAMS='{VASP_RAMAN_PARAMS}'")
+    log.info(f"VASP_RAMAN_PARAMS='{VASP_RAMAN_PARAMS}'")
     
     first, last, nderiv, step_size = parse_env_params(VASP_RAMAN_PARAMS)
-    assert first >= 1, '[__main__]: First mode should be equal or larger than 1'
-    assert last >= first, '[__main__]: Last mode should be equal or larger than first mode'
-    assert nderiv == 2, '[__main__]: At this time, nderiv = 2 is the only supported'
+    if first < 1:
+        log.error('First mode should be equal or larger than 1')
+        sys.exit(1)
+    if last < first:
+        log.error('Last mode should be equal or larger than first mode')
+        sys.exit(1)
+    if nderiv != 2:
+        log.error('At this time, nderiv = 2 is the only supported')
+        sys.exit(1)
 
-    print("[__main__]: Script execution completed.")
+    log.info("Script execution completed.")
