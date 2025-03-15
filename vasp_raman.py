@@ -165,6 +165,7 @@ def get_epsilon_from_OUTCAR(outcar_fh):
     try:
         vasprun = Vasprun('vasprun.xml', parse_dos=False, parse_projected_eigen=False) 
         epsilon = vasprun.epsilon_static
+        logging.debug(f"Dielectric tensor: {epsilon}")
         return epsilon
     except Exception as e:
         logging.error(f"Error parsing dielectric tensor from vasprun.xml: {e}")
