@@ -73,7 +73,7 @@ ulimit -s unlimited  # remove limit on stack size
 export VASP_RAMAN_RUN='mpirun -n 32 path/to/vasp'
 export VASP_RAMAN_PARAMS='01_10_2_0.01'
 
-python3 vasp_raman.py > vasp_raman.out
+python3 vasp_raman.py 
 ```
 
 After a few minutes you should start to see several OUTCAR files. These will be processed by the script and written to `vasp_raman.dat` which has the extracted information required to reproduce the Raman spectrum. You can plot the results using the provided script `plot_raman.py` using the command line. 
