@@ -8,6 +8,8 @@ from math import sqrt, pi
 from shutil import move
 import argparse
 
+from pymatgen.io.vasp import Vasprun
+
 def funclog(func):
     def wrapper(*args, **kwargs):
         logging.info(f"Running function: {func.__name__}")
@@ -173,9 +175,8 @@ def get_epsilon_from_OUTCAR(outcar_fh):
         except ValueError as e:
             logging.error(f"Error parsing dielectric tensor from OUTCAR: {e}")
             try:
-                import xml.etree.ElementTree as ET
-                doc = ET.parse('vasprun.xml')
-                epsilon = [[float(x) for x in c.text.split()] for c in doc.findall(".//varray")[3]]
+                vasprun = Vasprun('vasprun.xml', parse_dos=False, parse_projected_eigen=False) 
+                epsilon = vasprun.epsilon_static
                 return epsilon
             except Exception as e:
                 logging.error(f"Error parsing dielectric tensor from vasprun.xml: {e}")
