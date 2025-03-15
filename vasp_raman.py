@@ -8,6 +8,12 @@ from math import sqrt, pi
 from shutil import move
 import argparse
 
+def funclog(func):
+    def wrapper(*args, **kwargs):
+        logging.info(f"Running function: {func.__name__}")
+        return func(*args, **kwargs)
+    return wrapper
+
 # Configure logging
 logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s',
@@ -25,6 +31,7 @@ def T(m):
     return [[ m[i][j] for i in range(len( m[j] )) ] for j in range(len( m )) ]
 
 
+@funclog
 def parse_poscar(poscar_fh):
     # modified subroutine from phonopy 1.8.3 (New BSD license)
     #
@@ -33,7 +40,7 @@ def parse_poscar(poscar_fh):
     #
     scale = float(lines[1])
     if scale < 0.0:
-        logging.error("[parse_poscar]: ERROR negative scale not implemented.")
+        logging.error("Negative scale not implemented.")
         sys.exit(1)
     #
     b = []
@@ -74,15 +81,16 @@ def parse_poscar(poscar_fh):
     poscar_header = ''.join(lines[1:line_at-1]) # will add title and 'Cartesian' later
     return nat, vol, b, positions, poscar_header
 
-
+@funclog
 def parse_env_params(params):
     tmp = params.strip().split('_')
     if len(tmp) != 4:
-        logging.error("[parse_env_params]: ERROR there should be exactly four parameters")
+        logging.error("There should be exactly four parameters")
         sys.exit(1)
     first, last, nderiv, step_size = int(tmp[0]), int(tmp[1]), int(tmp[2]), float(tmp[3])
     return first, last, nderiv, step_size
 
+@funclog
 def parse_freqdat(freqdat_fh, nat):
     freqdat_fh.seek(0) # just in case
     eigvals = [ 0.0 for i in range(nat*3) ]
@@ -91,6 +99,7 @@ def parse_freqdat(freqdat_fh, nat):
         eigvals[i] = float(tmp[0])
     return eigvals
 
+@funclog
 def parse_modesdat(modesdat_fh, nat):
     modesdat_fh.seek(0) # just in case
 
@@ -109,6 +118,7 @@ def parse_modesdat(modesdat_fh, nat):
 
     return eigvecs, norms
 
+@funclog
 def get_modes_from_OUTCAR(outcar_fh, nat):
     eigvals = [ 0.0 for i in range(nat*3) ]
     eigvecs = [ 0.0 for i in range(nat*3) ]
@@ -125,7 +135,8 @@ def get_modes_from_OUTCAR(outcar_fh, nat):
             outcar_fh.readline() # Eigenvectors and eigenvalues of the dynamical matrix
             outcar_fh.readline() # ----------------------------------------------------
             outcar_fh.readline() # empty line
-            #
+            
+            logging.debug("Parsing eigenvectors and eigenvalues from OUTCAR")
             for i in range(nat*3): # all frequencies should be supplied, regardless of those requested to calculate
                 outcar_fh.readline() # empty line
                 p = re.search(r'^\s*(\d+).+?([\.\d]+) cm-1', outcar_fh.readline())
@@ -133,20 +144,20 @@ def get_modes_from_OUTCAR(outcar_fh, nat):
                 #
                 outcar_fh.readline() # X         Y         Z           dx          dy          dz
                 eigvec = []
-                #
+                
                 for j in range(nat):
                     tmp = outcar_fh.readline().split()
-                    #
                     eigvec.append([ float(tmp[x]) for x in range(3,6) ])
-                    #
+                    
                 eigvecs[i] = eigvec
                 norms[i] = sqrt( sum( [abs(x)**2 for sublist in eigvec for x in sublist] ) )
-            #
+            
             return eigvals, eigvecs, norms
-        #
-    logging.error("get_modes_from_OUTCAR]: Couldn't find 'Eigenvectors after division by SQRT(mass)' in OUTCAR. Use 'NWRITE=3' in INCAR. Exiting...")
+        
+    logging.error("Couldn't find 'Eigenvectors after division by SQRT(mass)' in OUTCAR. Use 'NWRITE=3' in INCAR. Exiting...")
     sys.exit(1)
 
+@funclog
 def get_epsilon_from_OUTCAR(outcar_fh):
     epsilon = []
     #
@@ -162,7 +173,7 @@ def get_epsilon_from_OUTCAR(outcar_fh):
             epsilon.append([float(x) for x in outcar_fh.readline().split()])
             epsilon.append([float(x) for x in outcar_fh.readline().split()])
             return epsilon
-    #
+    
     raise RuntimeError("[get_epsilon_from_OUTCAR]: ERROR Couldn't find dielectric tensor in OUTCAR")
 
 if __name__ == '__main__':
@@ -291,7 +302,7 @@ if __name__ == '__main__':
                 outcar_fh.close()
             except Exception as err:
                 logging.error(f"{err}")
-                logging.error(f"[__main__]: Moving {disp_filename} back to 'OUTCAR' and exiting...")
+                logging.error(f"Moving {disp_filename} back to 'OUTCAR' and exiting...")
                 move(disp_filename, 'OUTCAR')
                 sys.exit(1)
             #
