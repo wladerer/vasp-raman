@@ -22,6 +22,7 @@ logging.basicConfig(
     level=logging.INFO
 )
 
+#eventually convert to numpy
 def MAT_m_VEC(m, v):
     p = [0.0 for i in range(len(v))]
     for i in range(len(m)):
@@ -29,10 +30,12 @@ def MAT_m_VEC(m, v):
         p[i] = sum([m[i][j] * v[j] for j in range(len(v))])
     return p
 
+#why is this even a function
 def T(m):
     return [[ m[i][j] for i in range(len( m[j] )) ] for j in range(len( m )) ]
 
 
+#convert to pymatgen
 @funclog
 def parse_poscar(poscar_fh):
     poscar_fh.seek(0) # just in case
@@ -159,27 +162,13 @@ def get_modes_from_OUTCAR(outcar_fh, nat):
 
 @funclog
 def get_epsilon_from_OUTCAR(outcar_fh):
-    epsilon = []
-    outcar_fh.seek(0) 
-    while True:
-        line = outcar_fh.readline()
-        if not line:
-            break
-        try:
-            epsilon.append([float(x) for x in outcar_fh.readline().split()])
-            epsilon.append([float(x) for x in outcar_fh.readline().split()])
-            epsilon.append([float(x) for x in outcar_fh.readline().split()])
-        except ValueError as e:
-            logging.error(f"Error parsing dielectric tensor from OUTCAR: {e}")
-            try:
-                vasprun = Vasprun('vasprun.xml', parse_dos=False, parse_projected_eigen=False) 
-                epsilon = vasprun.epsilon_static
-                return epsilon
-            except Exception as e:
-                logging.error(f"Error parsing dielectric tensor from vasprun.xml: {e}")
-                raise RuntimeError("Couldn't find dielectric tensor in OUTCAR or vasprun.xml")
-    
-    raise RuntimeError("Couldn't find dielectric tensor in OUTCAR")
+    try:
+        vasprun = Vasprun('vasprun.xml', parse_dos=False, parse_projected_eigen=False) 
+        epsilon = vasprun.epsilon_static
+        return epsilon
+    except Exception as e:
+        logging.error(f"Error parsing dielectric tensor from vasprun.xml: {e}")
+        raise RuntimeError("Couldn't find dielectric tensor in vasprun.xml")
 
 if __name__ == '__main__':
 
