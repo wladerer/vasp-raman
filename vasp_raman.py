@@ -227,7 +227,7 @@ if __name__ == '__main__':
         sys.exit(1)
     
     nat, vol, b, pos, poscar_header = parse_poscar(poscar_fh)
-    logging.info(f"POSCAR info: {pos}")
+    logging.info(f"POSCAR info: {format_array(pos)}")
     
     # either use modes from vtst tools or VASP
     if os.path.isfile('freq.dat') and os.path.isfile('modes_sqrt_amu.dat'):
@@ -243,7 +243,7 @@ if __name__ == '__main__':
         try: 
             modes_fh = open('modes_sqrt_amu.dat' , 'r')
         except IOError:
-            logging.info("Couldn't open modes_sqrt_amu.dat, exiting...")
+            logging.error("Couldn't open modes_sqrt_amu.dat, exiting...")
             sys.exit(1)
        
         eigvecs, norms = parse_modesdat(modes_fh, nat)
@@ -253,7 +253,7 @@ if __name__ == '__main__':
         try:
             outcar_fh = open('OUTCAR.phon', 'r')
         except IOError:
-            logging.info("Couldn't open OUTCAR.phon, exiting...")
+            logging.error("Couldn't open OUTCAR.phon, exiting...")
             sys.exit(1)
    
         eigvals, eigvecs, norms = get_modes_from_OUTCAR(outcar_fh, nat)
@@ -308,7 +308,7 @@ if __name__ == '__main__':
                         logging.info("'-gen' mode -> POSCAR files with displaced atoms have been generated, exiting now")
                         sys.exit(0)
                 else: # run VASP here
-                    print("Running VASP")
+                    logging.info("Running VASP")
                     os.system(VASP_RAMAN_RUN)
                     #check if converged 
                     try:
