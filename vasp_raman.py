@@ -173,13 +173,13 @@ if __name__ == '__main__':
     args = vars(parser.parse_args())
     #
     VASP_RAMAN_RUN = os.environ.get('VASP_RAMAN_RUN')
-    if VASP_RAMAN_RUN == None:
+    if VASP_RAMAN_RUN is None:
         logging.error("ERROR Set environment variable 'VASP_RAMAN_RUN'")
         sys.exit(1)
     logging.info(f"User Setting: VASP_RAMAN_RUN='{VASP_RAMAN_RUN}'")
     
     VASP_RAMAN_PARAMS = os.environ.get('VASP_RAMAN_PARAMS')
-    if VASP_RAMAN_PARAMS == None:
+    if VASP_RAMAN_PARAMS is None:
         logging.error("Environment variable 'VASP_RAMAN_PARAMS' is not set, exiting...")
         sys.exit(1)
     logging.info(f"User Setting: VASP_RAMAN_PARAMS= {VASP_RAMAN_PARAMS}")
@@ -206,7 +206,7 @@ if __name__ == '__main__':
         try:
             freqdat_fh = open('freq.dat', 'r')
         except IOError:
-            logging.error(f"Couldn't open freq.dat, exiting...")
+            logging.error("Couldn't open freq.dat, exiting...")
             sys.exit(1)
         #
         eigvals = parse_freqdat(freqdat_fh, nat)
@@ -215,7 +215,7 @@ if __name__ == '__main__':
         try: 
             modes_fh = open('modes_sqrt_amu.dat' , 'r')
         except IOError:
-            logging.info(f"Couldn't open modes_sqrt_amu.dat, exiting...")
+            logging.info("Couldn't open modes_sqrt_amu.dat, exiting...")
             sys.exit(1)
         #
         eigvecs, norms = parse_modesdat(modes_fh, nat)
@@ -252,7 +252,7 @@ if __name__ == '__main__':
                 outcar_fh = open(disp_filename, 'r')
                 logging.info(f"File {disp_filename} exists, parsing...")
             except IOError:
-                if args['use_poscar'] != True:
+                if args['use_poscar']:
                     logging.info(f"File {disp_filename} not found, preparing displaced POSCAR")
                     poscar_fh = open('POSCAR', 'w')
                     poscar_fh.write("%s %4.1e \n" % (disp_filename, step_size))
@@ -270,10 +270,10 @@ if __name__ == '__main__':
                 if args['gen']: # only generate POSCARs
                     poscar_fn = 'POSCAR.%+d.out' % disps[j]
                     move('POSCAR', poscar_fn)
-                    logging.info(f"'-gen' mode -> {poscar_fn} with displaced atoms have been generated")
+                    logging.info("'-gen' mode -> {poscar_fn} with displaced atoms have been generated")
                     #
                     if j+1 == len(disps): # last iteration for the current displacements list
-                        logging.info(f"'-gen' mode -> POSCAR files with displaced atoms have been generated, exiting now")
+                        logging.info("'-gen' mode -> POSCAR files with displaced atoms have been generated, exiting now")
                         sys.exit(0)
                 else: # run VASP here
                     print("Running VASP")
