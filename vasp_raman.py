@@ -151,75 +151,71 @@ if __name__ == '__main__':
         logging.error("Neither vasprun.xml nor freq.dat/modes_sqrt_amu.dat were found, nothing to do, exiting...")
         sys.exit(1)
     
-    output_fh = open('vasp_raman.dat', 'w')
-    output_fh.write("# mode    freq(cm-1)    alpha    beta2    activity\n")
-    for i in range(first-1, last):
-        eigval = eigvals[i]
-        eigvec = eigvecs[i]
-        norm = norms[i]
-        #
-        logging.info(f"Mode #{i+1}: frequency {eigval:.7f} cm-1; norm: {norm:.7f}")
-        #
-        ra = [[0.0 for x in range(3)] for y in range(3)]
-        for j in range(len(disps)):
-            disp_filename = 'vasprun.%04d.%+d.xml' % (i+1, disps[j])
+    with open('vasp_raman.dat', 'w') as output_fh:
+        output_fh.write(f"# {'mode':<4} {'freq(cm-1)':<12} {'alpha':<10} {'beta2':<10} {'activity':<10}\n")
+        for i in range(first-1, last):
+            eigval = eigvals[i]
+            eigvec = eigvecs[i]
+            norm = norms[i]
+            
+            logging.info(f"Mode #{i+1}: frequency {eigval:.7f} cm-1; norm: {norm:.7f}")
             #
-            try:
-                vasprun_fh = open(disp_filename, 'r')
-                logging.info(f"File {disp_filename} exists, parsing...")
-            except IOError:
-                if args['use_poscar']:
-                    logging.info(f"File {disp_filename} not found, preparing displaced POSCAR")
-                    poscar = Poscar.from_file('POSCAR')
-                    structure = poscar.structure
-                    #
-                    for k in range(nat):
-                        displacement = eigvec[k] * step_size * disps[j] / norm
-                        structure.translate_sites(k, displacement, frac_coords=False)
-                    #
-                    poscar.comment = f"{disp_filename} {step_size}"
-                    poscar.structure = structure
-                    poscar.write_file('POSCAR')
-                else:
-                    logging.info("Using provided POSCAR")
+            ra = [[0.0 for x in range(3)] for y in range(3)]
+            for j in range(len(disps)):
+                disp_filename = f'vasprun.{i+1:04d}.{disps[j]:+d}.xml'
                 #
-                if args['gen']: # only generate POSCARs
-                    poscar_fn = 'POSCAR.%+d.out' % disps[j]
-                    move('POSCAR', poscar_fn)
-                    logging.info(f"'-gen' mode -> {poscar_fn} with displaced atoms have been generated")
+                try:
+                    with open(disp_filename, 'r') as vasprun_fh:
+                        logging.info(f"File {disp_filename} exists, parsing...")
+                        eps = get_epsilon_from_vasprun(vasprun_fh)
+                except IOError:
+                    if args['use_poscar']:
+                        logging.info(f"File {disp_filename} not found, preparing displaced POSCAR")
+                        poscar = Poscar.from_file('POSCAR')
+                        structure = poscar.structure
+                        #
+                        for k in range(nat):
+                            displacement = eigvec[k] * step_size * disps[j] / norm
+                            structure.translate_sites(k, displacement, frac_coords=False)
+                        #
+                        poscar.comment = f"{disp_filename} {step_size}"
+                        poscar.structure = structure
+                        poscar.write_file('POSCAR')
+                    else:
+                        logging.info("Using provided POSCAR")
                     #
-                    if j+1 == len(disps): # last iteration for the current displacements list
-                        logging.info("'-gen' mode -> POSCAR files with displaced atoms have been generated, exiting now")
-                        sys.exit(0)
-                else: # run VASP here
-                    print("Running VASP")
-                    os.system(VASP_RAMAN_RUN)
-                    try:
-                        move('vasprun.xml', disp_filename)
-                    except IOError:
-                        logging.error("ERROR Couldn't find vasprun.xml file, exiting...")
-                        sys.exit(1)
-                    
-                    vasprun_fh = open(disp_filename, 'r')
+                    if args['gen']: # only generate POSCARs
+                        poscar_fn = f'POSCAR.{disps[j]:+d}.out'
+                        move('POSCAR', poscar_fn)
+                        logging.info(f"'-gen' mode -> {poscar_fn} with displaced atoms have been generated")
+                        #
+                        if j+1 == len(disps): # last iteration for the current displacements list
+                            logging.info("'-gen' mode -> POSCAR files with displaced atoms have been generated, exiting now")
+                            sys.exit(0)
+                    else: # run VASP here
+                        print("Running VASP")
+                        os.system(VASP_RAMAN_RUN)
+                        try:
+                            move('vasprun.xml', disp_filename)
+                        except IOError:
+                            logging.error("ERROR Couldn't find vasprun.xml file, exiting...")
+                            sys.exit(1)
+                        
+                        with open(disp_filename, 'r') as vasprun_fh:
+                            eps = get_epsilon_from_vasprun(vasprun_fh)
+                except Exception as err:
+                    logging.error(f"{err}")
+                    logging.error(f"Moving {disp_filename} back to 'vasprun.xml' and exiting...")
+                    move(disp_filename, 'vasprun.xml')
+                    sys.exit(1)
+                #
+                for m in range(3):
+                    for n in range(3):
+                        ra[m][n]   += eps[m][n] * coeffs[j]/step_size * norm * vol/(4.0*pi)
+                #units: A^2/amu^1/2 =         dimless   * 1/A         * 1/amu^1/2  * A^3
             #
-            try:
-                eps = get_epsilon_from_vasprun(vasprun_fh)
-                vasprun_fh.close()
-            except Exception as err:
-                logging.error(f"{err}")
-                logging.error(f"Moving {disp_filename} back to 'vasprun.xml' and exiting...")
-                move(disp_filename, 'vasprun.xml')
-                sys.exit(1)
-            #
-            for m in range(3):
-                for n in range(3):
-                    ra[m][n]   += eps[m][n] * coeffs[j]/step_size * norm * vol/(4.0*pi)
-            #units: A^2/amu^1/2 =         dimless   * 1/A         * 1/amu^1/2  * A^3
-        #
-        alpha = (ra[0][0] + ra[1][1] + ra[2][2])/3.0
-        beta2 = ( (ra[0][0] - ra[1][1])**2 + (ra[0][0] - ra[2][2])**2 + (ra[1][1] - ra[2][2])**2 + 6.0 * (ra[0][1]**2 + ra[0][2]**2 + ra[1][2]**2) )/2.0
-        logging.info(f"! {i+1:4d}  freq: {eigval:10.5f}  alpha: {alpha:10.7f}  beta2: {beta2:10.7f}  activity: {45.0*alpha**2 + 7.0*beta2:10.7f}")
-        output_fh.write(f"{i+1:03d}  {eigval:10.5f}  {alpha:10.7f}  {beta2:10.7f}  {45.0*alpha**2 + 7.0*beta2:10.7f}\n")
-        output_fh.flush()
-    
-    output_fh.close()
+            alpha = (ra[0][0] + ra[1][1] + ra[2][2])/3.0
+            beta2 = ( (ra[0][0] - ra[1][1])**2 + (ra[0][0] - ra[2][2])**2 + (ra[1][1] - ra[2][2])**2 + 6.0 * (ra[0][1]**2 + ra[0][2]**2 + ra[1][2]**2) )/2.0
+            logging.info(f"! {i+1:4d}  freq: {eigval:10.5f}  alpha: {alpha:10.7f}  beta2: {beta2:10.7f}  activity: {45.0*alpha**2 + 7.0*beta2:10.7f}")
+            output_fh.write(f"{i+1:03d}  {eigval:10.5f}  {alpha:10.7f}  {beta2:10.7f}  {45.0*alpha**2 + 7.0*beta2:10.7f}\n")
+            output_fh.flush()
