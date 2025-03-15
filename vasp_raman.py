@@ -24,6 +24,25 @@ def MAT_m_VEC(m, v):
 def T(m):
     return [[ m[i][j] for i in range(len( m[j] )) ] for j in range(len( m )) ]
 
+def read_vasprun(vasprun_file):
+    try:
+        with open(vasprun_file, 'r') as f:
+            return Vasprun(f, parse_dos=False)
+    except IOError as e:
+        logging.error(f"Failed to open {vasprun_file}: {e}")
+        sys.exit(1)
+
+def parse_and_validate_params(param_string):
+    try:
+        first, last, nderiv, step_size = map(int, param_string.split('_')[:3]) + [float(param_string.split('_')[3])]
+        if nderiv != 2:
+            logging.error('Only nderiv=2 is supported')
+            sys.exit(1)
+        return first, last, nderiv, step_size
+    except ValueError as e:
+        logging.error(f"Invalid parameter string format: {e}")
+        sys.exit(1)
+
 
 def parse_poscar(poscar_fh):
     poscar = Poscar.from_file(poscar_fh.name)
