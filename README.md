@@ -1,6 +1,6 @@
 # NOT THE ORIGINAL REPO PLEASE CITE ALEXANDR and SHANNON
 
-This is a forked version of this code. I have added modern logging, python3 syntax, and some more robust runtime features that will help the user debug. There is now an external dependency, `pymatgen`, but I assume this is only a minor issue to computational chemists at this point. 
+This is a forked version of this code. I have added modern logging, python3 syntax, and some more robust runtime features that will help the user debug. There are now external dependencies (`pymatgen` and `numpy`) but I assume this is only a minor issue to computational chemists at this point. 
 
 ## Global variables
 
@@ -19,7 +19,13 @@ Please set `VASP_RAMAN_PARAMS` and `VASP_RAMAN_RUN` in your submission script.
 
 ## Calculation Prep
 
-You must do some work beforehand to have this script do the rest. In the directory in which you would like to run `vasp_raman.py` please include the following files:
+You must do some work beforehand to have this script do the rest. 
+
+
+
+Note that this is not the only configuration. You can have multistep options as well (see the examples in the original repository). I am currently working on making this compatible with slurm job arrays so everything can be done in parallel.  
+
+Now that we have run the DFPT or finite-differences calculation, we can move onto running the script. In the directory in which you would like to run `vasp_raman.py` please include the following files:
 
 - INCAR        - should contain `NWRITE =3`, `LEPSILON=.TRUE`, and `IBRION = {5,6,7,8}` 
 - OUTCAR.phon  - should contain 'Eigenvectors after division by SQRT(mass)' 
@@ -27,7 +33,7 @@ You must do some work beforehand to have this script do the rest. In the directo
 - POTCAR       
 - KPOINTS      
 
-Where the `.phon` extension indicates that this file has come from either a DFPT or finite-differences calculation.
+Where the `.phon` extension indicates that this file has come from either a DFPT or finite-differences calculation. `POTCAR` and `KPOINTS` are standard files and nothing special needs to be done to prepare these. 
 
 Here is an example INCAR that you can use
 ```
@@ -48,8 +54,7 @@ ADDGRID = False
 LCHARG = False
 ```
 
-Note that this is not the only configuration. You can have multistep options as well (see the examples in the original repository). I am currently working on making this compatible with slurm job arrays so everything can be done in parallel.  
-
+Now we can move onto submitting this job. 
 
 An example of SLURM script:
 
@@ -59,18 +64,22 @@ An example of SLURM script:
 #SBATCH --output=job.out
 #SBATCH --ntasks=32
 #SBATCH --time=01:00:00
-#SBATCH --partition=debug
+#SBATCH --partition=standard
 
 cd $SLURM_SUBMIT_DIR
 
 ulimit -s unlimited  # remove limit on stack size
 
-export VASP_RAMAN_RUN='srun /u/afonari/vasp.5.3.2/vasp.5.3/vasp'
+export VASP_RAMAN_RUN='mpirun -n 32 path/to/vasp'
 export VASP_RAMAN_PARAMS='01_10_2_0.01'
 
 python3 vasp_raman.py > vasp_raman.out
 ```
 
+After a few minutes you should start to see several OUTCAR files. These will be processed by the script and written to `vasp_raman.dat` which has the extracted information required to reproduce the Raman spectrum. You can plot the results using the provided script `plot_raman.py` using the command line. 
+
+```
+python3 plot_raman.py vasp_raman.dat
 
 ## How to cite
 
