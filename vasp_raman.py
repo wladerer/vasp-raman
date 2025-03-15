@@ -166,15 +166,22 @@ def get_epsilon_from_OUTCAR(outcar_fh):
         line = outcar_fh.readline()
         if not line:
             break
-        #
-        if "MACROSCOPIC STATIC DIELECTRIC TENSOR" in line:
-            outcar_fh.readline()
+        try:
             epsilon.append([float(x) for x in outcar_fh.readline().split()])
             epsilon.append([float(x) for x in outcar_fh.readline().split()])
             epsilon.append([float(x) for x in outcar_fh.readline().split()])
-            return epsilon
+        except ValueError as e:
+            logging.error(f"Error parsing dielectric tensor from OUTCAR: {e}")
+            try:
+                import xml.etree.ElementTree as ET
+                doc = ET.parse('vasprun.xml')
+                epsilon = [[float(x) for x in c.text.split()] for c in doc.findall(".//varray")[3]]
+                return epsilon
+            except Exception as e:
+                logging.error(f"Error parsing dielectric tensor from vasprun.xml: {e}")
+                raise RuntimeError("Couldn't find dielectric tensor in OUTCAR or vasprun.xml")
     
-    raise RuntimeError("[get_epsilon_from_OUTCAR]: ERROR Couldn't find dielectric tensor in OUTCAR")
+    raise RuntimeError("Couldn't find dielectric tensor in OUTCAR")
 
 if __name__ == '__main__':
 
