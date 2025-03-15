@@ -16,7 +16,7 @@ def funclog(func):
         return func(*args, **kwargs)
     return wrapper
 
-# Configure logging
+
 logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s',
     level=logging.INFO
@@ -35,51 +35,49 @@ def T(m):
 
 @funclog
 def parse_poscar(poscar_fh):
-    # modified subroutine from phonopy 1.8.3 (New BSD license)
-    #
     poscar_fh.seek(0) # just in case
     lines = poscar_fh.readlines()
-    #
+    
     scale = float(lines[1])
     if scale < 0.0:
         logging.error("Negative scale not implemented.")
         sys.exit(1)
-    #
+    
     b = []
     for i in range(2, 5):
         b.append([float(x)*scale for x in lines[i].split()[:3]])
-    #
+    
     vol = b[0][0]*b[1][1]*b[2][2] + b[1][0]*b[2][1]*b[0][2] + b[2][0]*b[0][1]*b[1][2] - \
           b[0][2]*b[1][1]*b[2][0] - b[2][1]*b[1][2]*b[0][0] - b[2][2]*b[0][1]*b[1][0]
-    #
+    
     try:
         num_atoms = [int(x) for x in lines[5].split()]
         line_at = 6
     except ValueError:
-        symbols = [x for x in lines[5].split()]
+        #symbols = [x for x in lines[5].split()] # not used but keep just in case
         num_atoms = [int(x) for x in lines[6].split()]
         line_at = 7
     nat = sum(num_atoms)
-    #
+    
     if lines[line_at][0].lower() == 's':
         line_at += 1
-    #
+    
     if (lines[line_at][0].lower() == 'c' or lines[line_at][0].lower() == 'k'):
         is_scaled = False
     else:
         is_scaled = True
-    #
+    
     line_at += 1
-    #
+    
     positions = []
     for i in range(line_at, line_at + nat):
         pos = [float(x) for x in lines[i].split()[:3]]
-        #
+        
         if is_scaled:
             pos = MAT_m_VEC(T(b), pos)
-        #
+        
         positions.append(pos)
-    #
+    
     poscar_header = ''.join(lines[1:line_at-1]) # will add title and 'Cartesian' later
     return nat, vol, b, positions, poscar_header
 
@@ -94,7 +92,7 @@ def parse_env_params(params):
 
 @funclog
 def parse_freqdat(freqdat_fh, nat):
-    freqdat_fh.seek(0) # just in case
+    freqdat_fh.seek(0) 
     eigvals = [ 0.0 for i in range(nat*3) ]
     for i in range(nat*3): # all frequencies should be supplied, regardless of requested to calculate
         tmp = freqdat_fh.readline().split()
@@ -103,7 +101,7 @@ def parse_freqdat(freqdat_fh, nat):
 
 @funclog
 def parse_modesdat(modesdat_fh, nat):
-    modesdat_fh.seek(0) # just in case
+    modesdat_fh.seek(0) 
 
     eigvecs = [ 0.0 for i in range(nat*3) ]
     norms =   [ 0.0 for i in range(nat*3) ]
@@ -114,7 +112,7 @@ def parse_modesdat(modesdat_fh, nat):
             tmp = modesdat_fh.readline().split()
             eigvec.append([ float(tmp[x]) for x in range(3) ])
 
-        modesdat_fh.readline().split() # empty line
+        modesdat_fh.readline().split() 
         eigvecs[i] = eigvec
         norms[i] = sqrt( sum( [abs(x)**2 for sublist in eigvec for x in sublist] ) )
 
@@ -126,12 +124,12 @@ def get_modes_from_OUTCAR(outcar_fh, nat):
     eigvecs = [ 0.0 for i in range(nat*3) ]
     norms   = [ 0.0 for i in range(nat*3) ]
     
-    outcar_fh.seek(0) # just in case
+    outcar_fh.seek(0) 
     while True:
         line = outcar_fh.readline()
         if not line:
             break
-        #
+        
         if "Eigenvectors after division by SQRT(mass)" in line:
             outcar_fh.readline() # empty line
             outcar_fh.readline() # Eigenvectors and eigenvalues of the dynamical matrix
@@ -162,8 +160,7 @@ def get_modes_from_OUTCAR(outcar_fh, nat):
 @funclog
 def get_epsilon_from_OUTCAR(outcar_fh):
     epsilon = []
-    #
-    outcar_fh.seek(0) # just in case
+    outcar_fh.seek(0) 
     while True:
         line = outcar_fh.readline()
         if not line:
@@ -190,7 +187,7 @@ if __name__ == '__main__':
     parser.add_argument('-g', '--gen', help='Generate POSCAR only', action='store_true')
     parser.add_argument('-u', '--use_poscar', help='Use provided POSCAR in the folder, USE WITH CAUTION!!', action='store_true')
     args = vars(parser.parse_args())
-    #
+    
     VASP_RAMAN_RUN = os.environ.get('VASP_RAMAN_RUN')
     if VASP_RAMAN_RUN is None:
         logging.error("ERROR Set environment variable 'VASP_RAMAN_RUN'")
@@ -227,29 +224,29 @@ if __name__ == '__main__':
         except IOError:
             logging.error("Couldn't open freq.dat, exiting...")
             sys.exit(1)
-        #
+        
         eigvals = parse_freqdat(freqdat_fh, nat)
         freqdat_fh.close()
-        #
+        
         try: 
             modes_fh = open('modes_sqrt_amu.dat' , 'r')
         except IOError:
             logging.info("Couldn't open modes_sqrt_amu.dat, exiting...")
             sys.exit(1)
-        #
+       
         eigvecs, norms = parse_modesdat(modes_fh, nat)
         modes_fh.close()
-    #
+    
     elif os.path.isfile('OUTCAR.phon'):
         try:
             outcar_fh = open('OUTCAR.phon', 'r')
         except IOError:
             logging.info("Couldn't open OUTCAR.phon, exiting...")
             sys.exit(1)
-        #
+   
         eigvals, eigvecs, norms = get_modes_from_OUTCAR(outcar_fh, nat)
         outcar_fh.close()
-    #
+   
     else:
         logging.error("Neither OUTCAR.phon nor freq.dat/modes_sqrt_amu.dat were found, nothing to do, exiting...")
         sys.exit(1)
@@ -260,13 +257,13 @@ if __name__ == '__main__':
         eigval = eigvals[i]
         eigvec = eigvecs[i]
         norm = norms[i]
-        #
+        
         logging.info(f"Mode #{i+1}: frequency {eigval:.7f} cm-1; norm: {norm:.7f}")
-        #
+       
         ra = [[0.0 for x in range(3)] for y in range(3)]
         for j in range(len(disps)):
             disp_filename = 'OUTCAR.%04d.%+d.out' % (i+1, disps[j])
-            #
+            
             try:
                 outcar_fh = open(disp_filename, 'r')
                 logging.info(f"File {disp_filename} exists, parsing...")
@@ -277,20 +274,20 @@ if __name__ == '__main__':
                     poscar_fh.write("%s %4.1e \n" % (disp_filename, step_size))
                     poscar_fh.write(poscar_header)
                     poscar_fh.write("Cartesian\n")
-                    #
+                    
                     for k in range(nat):
                         pos_disp = [ pos[k][l] + eigvec[k][l]*step_size*disps[j]/norm for l in range(3)]
                         poscar_fh.write( '%15.10f %15.10f %15.10f\n' % (pos_disp[0], pos_disp[1], pos_disp[2]) )
-                        #print '%10.6f %10.6f %10.6f %10.6f %10.6f %10.6f' % (pos[k][0], pos[k][1], pos[k][2], dis[k][0], dis[k][1], dis[k][2])
+                        
                     poscar_fh.close()
                 else:
                     logging.info("Using provided POSCAR")
-                #
+                
                 if args['gen']: # only generate POSCARs
                     poscar_fn = 'POSCAR.%+d.out' % disps[j]
                     move('POSCAR', poscar_fn)
                     logging.info("'-gen' mode -> {poscar_fn} with displaced atoms have been generated")
-                    #
+                    
                     if j+1 == len(disps): # last iteration for the current displacements list
                         logging.info("'-gen' mode -> POSCAR files with displaced atoms have been generated, exiting now")
                         sys.exit(0)
@@ -304,7 +301,7 @@ if __name__ == '__main__':
                         sys.exit(1)
                     
                     outcar_fh = open(disp_filename, 'r')
-            #
+            
             try:
                 eps = get_epsilon_from_OUTCAR(outcar_fh)
                 outcar_fh.close()
@@ -313,12 +310,12 @@ if __name__ == '__main__':
                 logging.error(f"Moving {disp_filename} back to 'OUTCAR' and exiting...")
                 move(disp_filename, 'OUTCAR')
                 sys.exit(1)
-            #
+            
             for m in range(3):
                 for n in range(3):
                     ra[m][n]   += eps[m][n] * coeffs[j]/step_size * norm * vol/(4.0*pi)
             #units: A^2/amu^1/2 =         dimless   * 1/A         * 1/amu^1/2  * A^3
-        #
+        
         alpha = (ra[0][0] + ra[1][1] + ra[2][2])/3.0
         beta2 = ( (ra[0][0] - ra[1][1])**2 + (ra[0][0] - ra[2][2])**2 + (ra[1][1] - ra[2][2])**2 + 6.0 * (ra[0][1]**2 + ra[0][2]**2 + ra[1][2]**2) )/2.0
         logging.info(f"! {i+1:4d}  freq: {eigval:10.5f}  alpha: {alpha:10.7f}  beta2: {beta2:10.7f}  activity: {45.0*alpha**2 + 7.0*beta2:10.7f}")

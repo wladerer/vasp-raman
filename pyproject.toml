@@ -1,0 +1,27 @@
+[project]
+name = "vasp-raman"
+version = "0.0.1"
+description = "A Python package to simulate Raman spectra from VASP calculations"
+authors = [
+    { name="Alexandr Fonari"},
+    { name="Shannon Stauffer"},
+    { name="William Laderer", email="wtladerer@gmail.com"}
+]
+readme = "README.md"
+classifiers = [
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Topic :: Scientific/Engineering :: Chemistry",
+]
+
+dependencies = [
+    "pymatgen",
+]
+
+[project.scripts]
+vasp-raman = "vasp_raman.cli:main"
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
