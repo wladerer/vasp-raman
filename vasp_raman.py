@@ -294,6 +294,16 @@ if __name__ == '__main__':
                 else: # run VASP here
                     print("Running VASP")
                     os.system(VASP_RAMAN_RUN)
+                    #check if converged 
+                    try:
+                        vasprun = Vasprun('vasprun.xml', parse_dos=False, parse_projected_eigen=False, parse_eigen=False) 
+                        if not vasprun.converged:
+                            logging.error("VASP didn't converge, exiting...")
+                            sys.exit(1)
+                    except Exception as e:
+                        logging.error(f"Error parsing vasprun.xml: {e}")
+                        sys.exit(1)
+
                     try:
                         move('OUTCAR', disp_filename)
                     except IOError:
