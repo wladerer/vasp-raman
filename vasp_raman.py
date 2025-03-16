@@ -154,6 +154,7 @@ if __name__ == '__main__':
 
 
     parser = argparse.ArgumentParser(description="Calculate Raman intensities using VASP")
+    parser.add_argument('--restart', action='store_true', help="Restart calculation from existing OUTCAR files")
     args = vars(parser.parse_args())
     
     VASP_RAMAN_RUN = os.environ.get('VASP_RAMAN_RUN')
@@ -212,7 +213,7 @@ if __name__ == '__main__':
                         eps = get_epsilon_from_OUTCAR(disp_filename)
                         log.info(f"Found existing epsilon: {eps}")
                 except IOError:
-                    if args['use_poscar'] is False:
+                    if args['restart'] is False:
                         print(f"File {disp_filename} not found, preparing displaced POSCAR")
                         displaced_poscar = write_displaced_poscar(structure, eigvec, step_size, disps[j], norm, "POSCAR")
 
