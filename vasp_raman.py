@@ -144,7 +144,7 @@ def get_epsilon_from_OUTCAR(filename):
     
     try:
         vasprun = Vasprun("vasprun.xml")
-        epsilon = vasprun.epsilon_static.tolist()
+        epsilon = vasprun.epsilon_static
         return epsilon
     except Exception as e:
         log.error(f"Error reading dielectric tensor from vasprun.xml: {e}")
