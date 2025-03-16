@@ -9,7 +9,6 @@ from math import pi
 from shutil import move
 
 from pymatgen.io.vasp import Poscar, Vasprun
-from pymatgen.core import Structure
 import numpy as np
 
 logging.basicConfig(filename='raman.log', filemode='w', level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
