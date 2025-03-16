@@ -171,8 +171,6 @@ if __name__ == '__main__':
     first, last, nderiv, step_size = parse_env_params(VASP_RAMAN_PARAMS)
     assert first >= 1,    '[__main__]: First mode should be equal or larger than 1'
     assert last >= first, '[__main__]: Last mode should be equal or larger than first mode'
-    if args['gen']:
-        assert last == first, "[__main__]: '-gen' mode -> only generation for the one mode makes sense"
     assert nderiv == 2,   '[__main__]: At this time, nderiv = 2 is the only supported'
     
 
