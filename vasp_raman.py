@@ -218,7 +218,7 @@ if __name__ == '__main__':
                         displaced_poscar = write_displaced_poscar(structure, eigvec, step_size, disps[j], norm, "POSCAR")
 
                         if not os.path.exists('modes'):
-                            os.makedirs('structures')
+                            os.makedirs('modes', exist_ok=True)
                         mode_dir = f'modes/mode_{i+1:04d}'
                         if not os.path.exists(mode_dir):
                             os.makedirs(mode_dir)
