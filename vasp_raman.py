@@ -11,6 +11,13 @@ import argparse
 from pymatgen.io.vasp import Vasprun
 import numpy as np
 
+logging.basicConfig(
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    filename="raman.log",  # Redirect logs to a file
+    filemode="w",  # Overwrite log file each run (use "a" for append mode)
+    level=logging.DEBUG,
+    datefmt='%Y-%m-%d %H:%M:%S'
+)
 
 def format_array(arr):
     """Formats a NumPy array or a nested list for better logging."""
@@ -25,15 +32,6 @@ def funclog(func):
         logging.info(f"Running function: {func.__name__}")
         return func(*args, **kwargs)
     return wrapper
-
-
-logging.basicConfig(
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    filename="raman.log",  # Redirect logs to a file
-    filemode="w",  # Overwrite log file each run (use "a" for append mode)
-    level=logging.INFO,
-    datefmt='%Y-%m-%d %H:%M:%S'
-)
 
 #eventually convert to numpy
 def MAT_m_VEC(m, v):
