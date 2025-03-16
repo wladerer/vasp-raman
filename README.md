@@ -1,6 +1,6 @@
-# NOT THE ORIGINAL REPO PLEASE CITE ALEXANDR and SHANNON
+# vasp_raman.py
 
-This is a forked version of this code. I have added modern logging, python3 syntax, and some more robust runtime features that will help the user debug. There are now external dependencies (`pymatgen` and `numpy`) but I assume this is only a minor issue to computational chemists at this point. 
+This is a forked version of this code. I have added modern logging, python3 syntax, and some more runtime features that will help the user debug. There are now external dependencies (`pymatgen` and `numpy`) but I assume this is only a minor issue to computational chemists at this point. 
 
 ## Global variables
 
@@ -19,13 +19,9 @@ Please set `VASP_RAMAN_PARAMS` and `VASP_RAMAN_RUN` in your submission script.
 
 ## Calculation Prep
 
-You must do some work beforehand to have this script do the rest. 
-
-
-
-Note that this is not the only configuration. You can have multistep options as well (see the examples in the original repository). I am currently working on making this compatible with slurm job arrays so everything can be done in parallel.  
-
-Now that we have run the DFPT or finite-differences calculation, we can move onto running the script. In the directory in which you would like to run `vasp_raman.py` please include the following files:
+You must do some work beforehand to have this script do the rest. First, you have to run a DFPT or finite differences calculation. Once that is done, you can copy over the OUTCAR and POSCAR from that calculation and into the directory you wish to run the displacements.
+  
+Once you have completed the DFPT or finite-differences calculation, we can move onto running the script. In the directory in which you would like to run `vasp_raman.py` please include the following files:
 
 - OUTCAR.phon 
 - POSCAR.phon  
@@ -80,12 +76,13 @@ After a few minutes you should start to see several OUTCAR files. These will be 
 
 ```
 python3 plot_raman.py vasp_raman.dat
+```
 
 ## How to cite
 
 Use [Bibtext](https://raw.githubusercontent.com/raman-sc/VASP/master/vasp_raman_py.bib) or [RIS](https://raw.githubusercontent.com/raman-sc/VASP/master/vasp_raman_py.ris) file for citation.
 
-## Contributors
+## Original Contributors
 
 Alexandr Fonari (Georgia Tech, PIs: J.-L. Bredas/V. Coropceanu): [Email](mailto:alexandr.fonari[nospam]gatech.edu)  
 Shannon Stauffer (UT Austin, PI: G. Henkelman): [Email](mailto:stauffers[nospam]utexas.edu).
