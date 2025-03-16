@@ -149,7 +149,7 @@ def get_epsilon_from_OUTCAR(filename):
     except Exception as e:
         log.error(f"Error reading dielectric tensor from vasprun.xml: {e}")
         raise RuntimeError("Couldn't find dielectric tensor in OUTCAR or vasprun.xml")
-#
+
 if __name__ == '__main__':
 
 
