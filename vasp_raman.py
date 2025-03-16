@@ -221,7 +221,7 @@ if __name__ == '__main__':
                             os.makedirs('modes', exist_ok=True)
                         mode_dir = f'modes/mode_{i+1:04d}'
                         if not os.path.exists(mode_dir):
-                            os.makedirs(mode_dir)
+                            os.makedirs(mode_dir, exist_ok=True)
                         displaced_poscar.write_file(f'{mode_dir}/POSCAR.{disps[j]:+d}.out')
                         log.info(f"Displaced POSCAR has been archived as '{mode_dir}/POSCAR.{disps[j]:+d}.out'")
 
