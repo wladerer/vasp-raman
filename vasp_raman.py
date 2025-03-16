@@ -225,7 +225,6 @@ if __name__ == '__main__':
                         displaced_poscar.write_file(f'{mode_dir}/POSCAR.{disps[j]:+d}.out')
                         log.info(f"Displaced POSCAR has been archived as '{mode_dir}/POSCAR.{disps[j]:+d}.out'")
 
-                    else: 
                         log.info("Running VASP...")
                         os.system(VASP_RAMAN_RUN)
                         try:
