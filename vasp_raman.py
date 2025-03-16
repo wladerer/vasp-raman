@@ -62,7 +62,7 @@ def write_displaced_poscar(structure, eigvec, step_size, disp, norm, filename) -
     # Write new POSCAR
     poscar = Poscar(displaced_structure)
     poscar.write_file(filename)
-    logging.info(f"Wrote displaced POSCAR {filename}\n{poscar}\n")
+    logging.info(f"Wrote displaced POSCAR to {filename}\n{poscar}\n")
 
     return poscar
 
@@ -154,9 +154,6 @@ if __name__ == '__main__':
 
 
     parser = argparse.ArgumentParser(description="Calculate Raman intensities using VASP")
-    parser.add_argument('-g', '--gen', help='Generate POSCAR only', action='store_true')
-    parser.add_argument('-u', '--use_poscar', help='Use provided POSCAR in the folder, USE WITH CAUTION!!', action='store_true')
-    parser.add_argument('--save-poscars, -s', help='Save POSCARs with displaced atoms', action='store_true')
     args = vars(parser.parse_args())
     
     VASP_RAMAN_RUN = os.environ.get('VASP_RAMAN_RUN')
@@ -221,26 +218,14 @@ if __name__ == '__main__':
                         print(f"File {disp_filename} not found, preparing displaced POSCAR")
                         displaced_poscar = write_displaced_poscar(structure, eigvec, step_size, disps[j], norm, "POSCAR")
 
-                        if args['save_poscars']:
-                            if not os.path.exists('structures'):
-                                os.makedirs('structures')
-                            mode_dir = f'modes/mode_{i+1:04d}'
-                            if not os.path.exists(mode_dir):
-                                os.makedirs(mode_dir)
-                            displaced_poscar.write_file(f'{mode_dir}/POSCAR.{disps[j]:+d}.out')
-                            log.info(f"Displaced POSCAR has also been archived as '{mode_dir}/POSCAR.{disps[j]:+d}.out'")
+                        if not os.path.exists('modes'):
+                            os.makedirs('structures')
+                        mode_dir = f'modes/mode_{i+1:04d}'
+                        if not os.path.exists(mode_dir):
+                            os.makedirs(mode_dir)
+                        displaced_poscar.write_file(f'{mode_dir}/POSCAR.{disps[j]:+d}.out')
+                        log.info(f"Displaced POSCAR has been archived as '{mode_dir}/POSCAR.{disps[j]:+d}.out'")
 
-                    else:
-                        log.info("Using provided POSCAR")
-                    
-                    if args['gen']: # only generate POSCARs
-                        poscar_fn = f'POSCAR.{disps[j]:+d}.out'
-                        move('POSCAR', poscar_fn)
-                        log.info(f"'-gen' mode -> {poscar_fn} with displaced atoms have been generated")
-                        #
-                        if j+1 == len(disps): # last iteration for the current displacements list
-                            log.info("'-gen' mode -> POSCAR files with displaced atoms have been generated, exiting now")
-                            sys.exit(0)
                     else: 
                         log.info("Running VASP...")
                         os.system(VASP_RAMAN_RUN)
