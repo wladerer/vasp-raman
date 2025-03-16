@@ -141,13 +141,11 @@ if __name__ == '__main__':
     coeffs = [-0.5, 0.5] # three point stencil (nderiv=2)
 
     try:
-        poscar_fh = open('POSCAR.phon', 'r')
-    except IOError:
-        log.error("Couldn't open input file POSCAR.phon, exiting...")
+        nat, vol, b, pos, poscar_header = parse_poscar('POSCAR.phon')
+    except Exception as e:
+        log.error(f"Couldn't open or parse input file POSCAR.phon, exiting... Error: {e}")
         sys.exit(1)
     
-    # nat, vol, b, poscar_header = parse_poscar_header(poscar_fh)
-    nat, vol, b, pos, poscar_header = parse_poscar(poscar_fh)
     log.info(f"{Poscar.from_file('POSCAR.phon')}")
 
     if os.path.isfile('OUTCAR.phon'):
@@ -184,14 +182,14 @@ if __name__ == '__main__':
                             for k in range(nat):
                                 pos_disp = [ pos[k][l] + eigvec[k][l]*step_size*disps[j]/norm for l in range(3)]
                                 poscar_fh.write( '%15.10f %15.10f %15.10f\n' % (pos_disp[0], pos_disp[1], pos_disp[2]) )
-                        #
+                    
                     else:
                         log.info("Using provided POSCAR")
-                    #
+                    
                     if args['gen']: # only generate POSCARs
                         poscar_fn = f'POSCAR.{disps[j]:+d}.out'
                         move('POSCAR', poscar_fn)
-                        log.info(f"[__main__]: '-gen' mode -> {poscar_fn} with displaced atoms have been generated")
+                        log.info(f"'-gen' mode -> {poscar_fn} with displaced atoms have been generated")
                         #
                         if j+1 == len(disps): # last iteration for the current displacements list
                             log.info("'-gen' mode -> POSCAR files with displaced atoms have been generated, exiting now")
