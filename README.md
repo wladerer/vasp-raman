@@ -27,7 +27,7 @@ Note that this is not the only configuration. You can have multistep options as 
 
 Now that we have run the DFPT or finite-differences calculation, we can move onto running the script. In the directory in which you would like to run `vasp_raman.py` please include the following files:
 
-- vasprun.xml.phon 
+- OUTCAR.phon 
 - POSCAR.phon  
 - POTCAR       
 - KPOINTS      
