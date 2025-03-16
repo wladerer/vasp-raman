@@ -9,6 +9,8 @@ from math import pi
 from shutil import move
 
 from pymatgen.io.vasp import Poscar, Vasprun
+from pymatgen.core import Structure
+import numpy as np
 
 logging.basicConfig(filename='raman.log', filemode='w', level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 log = logging.getLogger(__name__)
@@ -25,6 +27,29 @@ def T(m):
     p = [[ m[i][j] for i in range(len( m[j] )) ] for j in range(len( m )) ]
     return p
 
+
+def write_displaced_poscar(structure, eigvec, step_size, disp, norm, filename):
+    """
+    Writes a displaced POSCAR file using pymatgen.
+    
+    Parameters:
+    - structure (Structure): Pymatgen structure object.
+    - eigvec (list): Eigenvector displacements for atoms.
+    - step_size (float): Displacement step size.
+    - disp (int): Displacement direction (-1 or 1).
+    - norm (float): Normalization factor for displacement.
+    - filename (str): Output POSCAR filename.
+    """
+    # Displace atoms
+    displaced_structure = structure.copy()
+    for i, site in enumerate(displaced_structure.sites):
+        displacement = np.array(eigvec[i]) * step_size * disp / norm
+        displaced_structure.translate_sites(i, displacement, frac_coords=False)
+
+    # Write new POSCAR
+    poscar = Poscar(displaced_structure)
+    poscar.write_file(filename)
+    logging.info(f"Wrote displaced POSCAR: {filename}")
 
 def parse_poscar(filename: str):
     poscar = Poscar.from_file(filename)
@@ -142,6 +167,7 @@ if __name__ == '__main__':
 
     try:
         nat, vol, b, pos, poscar_header = parse_poscar('POSCAR.phon')
+        structure = Poscar.from_file('POSCAR.phon').structure
     except Exception as e:
         log.error(f"Couldn't open or parse input file POSCAR.phon, exiting... Error: {e}")
         sys.exit(1)
@@ -172,17 +198,10 @@ if __name__ == '__main__':
                     with open(disp_filename, 'r') as outcar_fh:
                         log.info(f"File {disp_filename} exists, parsing...")
                 except IOError:
-                    if args['use_poscar'] is not True:
+                    if args['use_poscar'] is False:
                         print(f"File {disp_filename} not found, preparing displaced POSCAR")
-                        with open('POSCAR', 'w') as poscar_fh:
-                            poscar_fh.write("%s %4.1e \n" % (disp_filename, step_size))
-                            poscar_fh.write(poscar_header)
-                            poscar_fh.write("Cartesian\n")
-                            #
-                            for k in range(nat):
-                                pos_disp = [ pos[k][l] + eigvec[k][l]*step_size*disps[j]/norm for l in range(3)]
-                                poscar_fh.write( '%15.10f %15.10f %15.10f\n' % (pos_disp[0], pos_disp[1], pos_disp[2]) )
-                    
+                        write_displaced_poscar(structure, eigvec, step_size, disps[j], norm, "POSCAR")
+
                     else:
                         log.info("Using provided POSCAR")
                     
