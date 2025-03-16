@@ -41,7 +41,7 @@ def compute_polarizability(ra):
     return alpha, beta2
 
 
-def write_displaced_poscar(structure, eigvec, step_size, disp, norm, filename):
+def write_displaced_poscar(structure, eigvec, step_size, disp, norm, filename) -> Poscar:
     """
     Writes a displaced POSCAR file using pymatgen.
     
@@ -63,6 +63,8 @@ def write_displaced_poscar(structure, eigvec, step_size, disp, norm, filename):
     poscar = Poscar(displaced_structure)
     poscar.write_file(filename)
     logging.info(f"Wrote displaced POSCAR {filename}\n{poscar}\n")
+
+    return poscar
 
 def parse_poscar(filename: str):
     poscar = Poscar.from_file(filename)
@@ -154,6 +156,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Calculate Raman intensities using VASP")
     parser.add_argument('-g', '--gen', help='Generate POSCAR only', action='store_true')
     parser.add_argument('-u', '--use_poscar', help='Use provided POSCAR in the folder, USE WITH CAUTION!!', action='store_true')
+    parser.add_argument('--save-poscars, -s', help='Save POSCARs with displaced atoms', action='store_true')
     args = vars(parser.parse_args())
     
     VASP_RAMAN_RUN = os.environ.get('VASP_RAMAN_RUN')
@@ -216,7 +219,13 @@ if __name__ == '__main__':
                 except IOError:
                     if args['use_poscar'] is False:
                         print(f"File {disp_filename} not found, preparing displaced POSCAR")
-                        write_displaced_poscar(structure, eigvec, step_size, disps[j], norm, "POSCAR")
+                        displaced_poscar = write_displaced_poscar(structure, eigvec, step_size, disps[j], norm, "POSCAR")
+
+                        if args['save_poscars']:
+                            if not os.path.exists('structures'):
+                                os.makedirs('structures')
+                            displaced_poscar.write_file(f'structures/POSCAR.{disps[j]:+d}.out')
+                            log.info(f"Displaced POSCAR has also been archived as 'structures/POSCAR.{disps[j]:+d}.out'")
 
                     else:
                         log.info("Using provided POSCAR")
