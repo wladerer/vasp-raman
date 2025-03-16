@@ -7,7 +7,7 @@ from shutil import move
 import argparse
 
 
-from pymatgen.io.vasp import Vasprun, Poscar
+from pymatgen.io.vasp import Vasprun, Outcar, Poscar
 import numpy as np
 
 def funclog(func):
@@ -67,6 +67,7 @@ def get_modes_from_vasprun(filename: str):
     
     return eigvals, eigvecs, norms
 
+
 @funclog
 def get_epsilon_from_vasprun(filename: str):
     try:
@@ -77,6 +78,7 @@ def get_epsilon_from_vasprun(filename: str):
     except Exception as e:
         logging.error(f"Error parsing dielectric tensor from vasprun.xml: {e}")
         raise RuntimeError("Couldn't find dielectric tensor in vasprun.xml")
+    
 
 if __name__ == '__main__':
 
@@ -137,9 +139,9 @@ if __name__ == '__main__':
                 except IOError:
                     if args['use_poscar']:
                         logging.info(f"File {disp_filename} not found, preparing displaced POSCAR")
-                        poscar = Poscar.from_file('POSCAR')
-                        n_atoms = len(poscar.structure)
-                        structure = poscar.structure.copy()
+                        structure = vasprun.final_structure
+                        n_atoms = len(structure)
+                        structure = structure.copy()
                         for k in range(n_atoms):
                             displacement = eigvec[k] * step_size * disps[j] / norm
                             structure.translate_sites(k, displacement, frac_coords=False)
@@ -181,7 +183,7 @@ if __name__ == '__main__':
                     
                 except Exception as err:
                     logging.error(f"{err}")
-                    logging.error(f"Moving {disp_filename} back to 'OUTCAR' and exiting...")
+                    logging.error(f"Moving {disp_filename} back to 'vasprun.xml' and exiting...")
                     move(disp_filename, 'vasprun.xml')
                     sys.exit(1)
                 

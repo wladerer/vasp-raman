@@ -27,11 +27,11 @@ Note that this is not the only configuration. You can have multistep options as 
 
 Now that we have run the DFPT or finite-differences calculation, we can move onto running the script. In the directory in which you would like to run `vasp_raman.py` please include the following files:
 
-- INCAR        - should contain `NWRITE =3`, `LEPSILON=.TRUE`, and `IBRION = {5,6,7,8}` 
-- OUTCAR.phon  - should contain 'Eigenvectors after division by SQRT(mass)' 
+- vasprun.xml.phon 
 - POSCAR.phon  
 - POTCAR       
 - KPOINTS      
+- INCAR (must contain `NWRITE =3`, `LEPSILON=.TRUE`, and `IBRION = {5,6,7,8}`)
 
 Where the `.phon` extension indicates that this file has come from either a DFPT or finite-differences calculation. `POTCAR` and `KPOINTS` are standard files and nothing special needs to be done to prepare these. 
 
