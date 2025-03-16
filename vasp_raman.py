@@ -10,7 +10,7 @@ from shutil import move
 
 from pymatgen.io.vasp import Poscar, Vasprun
 
-logging.basicConfig(filename='raman.log', level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(filename='raman.log', filemode='w', level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 log = logging.getLogger(__name__)
 
 def MAT_m_VEC(m, v):
@@ -203,14 +203,13 @@ if __name__ == '__main__':
                             log.error("Couldn't find OUTCAR file, exiting...")
                             sys.exit(1)
                         #
-                        with open(disp_filename, 'r') as outcar_fh:
-                            try:
-                                eps = get_epsilon_from_OUTCAR(outcar_fh)
-                            except Exception as err:
-                                log.error(f"Error while getting epsilon from {disp_filename}: {err}")
-                                log.info(f"Moving {disp_filename} back to 'OUTCAR' and exiting...")
-                                move(disp_filename, 'OUTCAR')
-                                sys.exit(1)
+                        try:
+                            eps = get_epsilon_from_OUTCAR(disp_filename)
+                        except Exception as err:
+                            log.error(f"Error while getting epsilon from {disp_filename}: {err}")
+                            log.info(f"Moving {disp_filename} back to 'OUTCAR' and exiting...")
+                            move(disp_filename, 'OUTCAR')
+                            sys.exit(1)
                 
                 for m in range(3):
                     for n in range(3):
