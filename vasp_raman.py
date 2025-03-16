@@ -7,25 +7,16 @@ import logging
 from math import sqrt, pi
 from shutil import move
 import argparse
-
+import textwrap
 from pymatgen.io.vasp import Vasprun
 import numpy as np
 
-logging.basicConfig(
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    filename="raman.log",  # Redirect logs to a file
-    filemode="w",  # Overwrite log file each run (use "a" for append mode)
-    level=logging.DEBUG,
-    datefmt='%Y-%m-%d %H:%M:%S'
-)
-
 def format_array(arr):
-    """Formats a NumPy array or a nested list for better logging."""
-    if isinstance(arr, np.ndarray):
-        return np.array2string(arr, precision=4, separator=", ", suppress_small=True)
-    elif isinstance(arr, list):  # Convert lists to NumPy for consistent formatting
-        return np.array2string(np.array(arr), precision=4, separator=", ", suppress_small=True)
+    """Formats NumPy arrays and lists for compact logging with proper indentation."""
+    if isinstance(arr, np.ndarray) or isinstance(arr, list):
+        return textwrap.indent(np.array2string(np.array(arr), separator=", ", precision=4, suppress_small=True), " " * 14)
     return str(arr)
+
 
 def funclog(func):
     def wrapper(*args, **kwargs):
@@ -255,9 +246,9 @@ if __name__ == '__main__':
             sys.exit(1)
    
         eigvals, eigvecs, norms = get_modes_from_OUTCAR(outcar_fh, nat)
-        logging.debug(f"Eigenvalues: {eigvals}")
-        logging.debug(f"Eigenvectors: {eigvecs}")
-        logging.debug(f"Norms: {norms}")
+        logging.debug(f"Eigenvalues: {format_array(eigvals)}")
+        logging.debug(f"Eigenvectors: {format_array(eigvecs)}")
+        logging.debug(f"Norms: {format_array(norms)}")
 
         outcar_fh.close()
    
