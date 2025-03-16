@@ -197,6 +197,8 @@ if __name__ == '__main__':
                 try:
                     with open(disp_filename, 'r') as outcar_fh:
                         log.info(f"File {disp_filename} exists, parsing...")
+                        eps = get_epsilon_from_OUTCAR(disp_filename)
+                        log.info(f"Found existing epsilon: {eps}")
                 except IOError:
                     if args['use_poscar'] is False:
                         print(f"File {disp_filename} not found, preparing displaced POSCAR")
@@ -221,7 +223,7 @@ if __name__ == '__main__':
                         except IOError:
                             log.error("Couldn't find OUTCAR file, exiting...")
                             sys.exit(1)
-                        #
+                        
                         try:
                             eps = get_epsilon_from_OUTCAR(disp_filename)
                         except Exception as err:
