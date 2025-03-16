@@ -224,8 +224,11 @@ if __name__ == '__main__':
                         if args['save_poscars']:
                             if not os.path.exists('structures'):
                                 os.makedirs('structures')
-                            displaced_poscar.write_file(f'structures/POSCAR.{disps[j]:+d}.out')
-                            log.info(f"Displaced POSCAR has also been archived as 'structures/POSCAR.{disps[j]:+d}.out'")
+                            mode_dir = f'modes/mode_{i+1:04d}'
+                            if not os.path.exists(mode_dir):
+                                os.makedirs(mode_dir)
+                            displaced_poscar.write_file(f'{mode_dir}/POSCAR.{disps[j]:+d}.out')
+                            log.info(f"Displaced POSCAR has also been archived as '{mode_dir}/POSCAR.{disps[j]:+d}.out'")
 
                     else:
                         log.info("Using provided POSCAR")
