@@ -49,7 +49,7 @@ def write_displaced_poscar(structure, eigvec, step_size, disp, norm, filename):
     # Write new POSCAR
     poscar = Poscar(displaced_structure)
     poscar.write_file(filename)
-    logging.info(f"Wrote displaced POSCAR: {filename}")
+    logging.info(f"Wrote displaced POSCAR {filename}\n{poscar}\n")
 
 def parse_poscar(filename: str):
     poscar = Poscar.from_file(filename)
@@ -236,5 +236,5 @@ if __name__ == '__main__':
             
             alpha = (ra[0][0] + ra[1][1] + ra[2][2])/3.0
             beta2 = ( (ra[0][0] - ra[1][1])**2 + (ra[0][0] - ra[2][2])**2 + (ra[1][1] - ra[2][2])**2 + 6.0 * (ra[0][1]**2 + ra[0][2]**2 + ra[1][2]**2) )/2.0
-            log.info("! %4i  freq: %10.5f  alpha: %10.7f  beta2: %10.7f  activity: %10.7f " % (i+1, eigval, alpha, beta2, 45.0*alpha**2 + 7.0*beta2))
+            log.info("Mode %4i  freq: %10.5f  alpha: %10.7f  beta2: %10.7f  activity: %10.7f " % (i+1, eigval, alpha, beta2, 45.0*alpha**2 + 7.0*beta2))
             outfile.write("%03i  %10.5f  %10.7f  %10.7f  %10.7f\n" % (i+1, eigval, alpha, beta2, 45.0*alpha**2 + 7.0*beta2))
