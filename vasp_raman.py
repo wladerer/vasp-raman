@@ -14,17 +14,31 @@ import numpy as np
 logging.basicConfig(filename='raman.log', filemode='w', level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 log = logging.getLogger(__name__)
 
-def MAT_m_VEC(m, v):
-    p = [ 0.0 for i in range(len(v)) ]
-    for i in range(len(m)):
-        assert len(v) == len(m[i]), 'Length of the matrix row is not equal to the length of the vector'
-        p[i] = sum( [ m[i][j]*v[j] for j in range(len(v)) ] )
-    return p
 
+def compute_polarizability(ra):
+    """
+    Compute isotropic polarizability (alpha) and anisotropy (beta²)
+    from a 3x3 polarizability tensor using NumPy.
+    """
+    ra = np.array(ra)  # Ensure input is a NumPy array
 
-def T(m):
-    p = [[ m[i][j] for i in range(len( m[j] )) ] for j in range(len( m )) ]
-    return p
+    # Compute Alpha (Isotropic Polarizability)
+    alpha = np.trace(ra) / 3.0
+
+    # Compute Beta² (Anisotropy)
+    diag_elements = np.diag(ra)  # Extract diagonal elements: [A_xx, A_yy, A_zz]
+    off_diag_elements = ra[np.triu_indices(3, k=1)]  # Extract upper triangle off-diagonal elements: [A_xy, A_xz, A_yz]
+
+    # Compute diagonal differences squared
+    diag_diffs = np.array([
+        diag_elements[0] - diag_elements[1], 
+        diag_elements[0] - diag_elements[2], 
+        diag_elements[1] - diag_elements[2]
+    ])
+
+    beta2 = (np.linalg.norm(diag_diffs) ** 2 + 6.0 * np.linalg.norm(off_diag_elements) ** 2) / 2.0
+
+    return alpha, beta2
 
 
 def write_displaced_poscar(structure, eigvec, step_size, disp, norm, filename):
@@ -72,7 +86,6 @@ def parse_env_params(params):
 
 
 def get_modes_from_OUTCAR(filename, nat):
-    from math import sqrt
     eigvals = [0.0 for i in range(nat * 3)]
     eigvecs = [0.0 for i in range(nat * 3)]
     norms = [0.0 for i in range(nat * 3)]
@@ -103,7 +116,7 @@ def get_modes_from_OUTCAR(filename, nat):
                         eigvec.append([float(tmp[x]) for x in range(3, 6)])
                 
                     eigvecs[i] = eigvec
-                    norms[i] = sqrt(sum([abs(x) ** 2 for sublist in eigvec for x in sublist]))
+                    norms[i] = np.sqrt(sum([abs(x) ** 2 for sublist in eigvec for x in sublist]))
                 
                 return eigvals, eigvecs, norms
             
@@ -161,6 +174,8 @@ if __name__ == '__main__':
     if args['gen']:
         assert last == first, "[__main__]: '-gen' mode -> only generation for the one mode makes sense"
     assert nderiv == 2,   '[__main__]: At this time, nderiv = 2 is the only supported'
+    
+
     disps = [-1, 1]      # hardcoded for
     coeffs = [-0.5, 0.5] # three point stencil (nderiv=2)
 
@@ -180,7 +195,7 @@ if __name__ == '__main__':
         log.error("Couldn't find 'OUTCAR.phon', exiting...")
         sys.exit(1)
     
-    with open('vasp_raman.dat', 'w') as outfile:
+    with open('raman.dat', 'w') as outfile:
         outfile.write("# mode    freq(cm-1)    alpha    beta2    activity\n")
         for i in range(first-1, last):
             eigval = eigvals[i]
@@ -235,7 +250,7 @@ if __name__ == '__main__':
                     for n in range(3):
                         ra[m][n]   += eps[m][n] * coeffs[j]/step_size * norm * vol/(4.0*pi)
             
-            alpha = (ra[0][0] + ra[1][1] + ra[2][2])/3.0
-            beta2 = ( (ra[0][0] - ra[1][1])**2 + (ra[0][0] - ra[2][2])**2 + (ra[1][1] - ra[2][2])**2 + 6.0 * (ra[0][1]**2 + ra[0][2]**2 + ra[1][2]**2) )/2.0
-            log.info("Mode %4i  freq: %10.5f  alpha: %10.7f  beta2: %10.7f  activity: %10.7f " % (i+1, eigval, alpha, beta2, 45.0*alpha**2 + 7.0*beta2))
-            outfile.write("%03i  %10.5f  %10.7f  %10.7f  %10.7f\n" % (i+1, eigval, alpha, beta2, 45.0*alpha**2 + 7.0*beta2))
+            alpha, beta2 = compute_polarizability(ra)
+
+            log.info(f"Mode {i+1:4d}  freq: {eigval:10.5f}  alpha: {alpha:10.7f}  beta2: {beta2:10.7f}  activity: {45.0*alpha**2 + 7.0*beta2:10.7f}")
+            outfile.write(f"{i+1:03d}  {eigval:10.5f}  {alpha:10.7f}  {beta2:10.7f}  {45.0*alpha**2 + 7.0*beta2:10.7f}\n")
