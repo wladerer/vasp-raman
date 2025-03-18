@@ -170,9 +170,9 @@ if __name__ == '__main__':
 
     log.info(f"User Setting: VASP_RAMAN_PARAMS= {VASP_RAMAN_PARAMS}")
     first, last, nderiv, step_size = parse_env_params(VASP_RAMAN_PARAMS)
-    assert first >= 1,    '[__main__]: First mode should be equal or larger than 1'
-    assert last >= first, '[__main__]: Last mode should be equal or larger than first mode'
-    assert nderiv == 2,   '[__main__]: At this time, nderiv = 2 is the only supported'
+    assert first >= 1,    'First mode should be equal or larger than 1'
+    assert last >= first, 'Last mode should be equal or larger than first mode'
+    assert nderiv == 2,   'At this time, nderiv = 2 is the only supported'
     
 
     disps = [-1, 1]      # hardcoded for
