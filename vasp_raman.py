@@ -241,9 +241,12 @@ if __name__ == '__main__':
                             move(disp_filename, 'OUTCAR')
                             sys.exit(1)
                 
-                for m in range(3):
-                    for n in range(3):
-                        ra[m][n]   += eps[m][n] * coeffs[j]/step_size * norm * vol/(4.0*pi)
+                
+                ra += np.sum(eps[:, :] * (coeffs[:, np.newaxis, np.newaxis] / step_size) * (vol / (4.0 * np.pi)), axis=0)
+                # for m in range(3):
+                #     for n in range(3):
+                #         # ra[m][n]   += eps[m][n] * coeffs[j]/step_size * norm * vol/(4.0*pi)
+                #         ra[m][n]  += eps[m][n] * coeffs[j]/step_size * vol/(4.0*pi)
             
             alpha, beta2 = compute_polarizability(ra)
 
